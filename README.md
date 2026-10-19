@@ -8,8 +8,9 @@ is a pure projection of that log.
 
 This is the second prototype: a real server with GitHub sign-in and a
 database, one event stream per seam, and the UI, CLI and Claude Code
-plugin as its clients. The work itself is still mocked: agents only update
-seam state.
+plugin as its clients. Agents do the work for real: each implementation
+runs in a subagent in its own git worktree, on its own branch, and ends in
+its own pull request.
 
 ## Layout
 

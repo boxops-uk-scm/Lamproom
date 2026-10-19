@@ -230,7 +230,7 @@ server.registerTool(
   {
     title: 'Attach an artefact version',
     description:
-      'Record that an artefact now exists or has a new version. ref is a pointer to it: a commit SHA, PR number, file path, URL, or for mocked work a short "mock:" description. A new version clears an earlier rejection.',
+      'Record that an artefact now exists or has a new version. ref is a pointer to it: a commit SHA, a file path, or for a pull request its URL at the head commit (https://github.com/<owner>/<name>/pull/<n>/commits/<sha>). A new version clears an earlier rejection, so re-attaching the same ref after a rejection does not.',
     inputSchema: { artefactId: z.string(), ref: z.string(), note: z.string().optional().describe('Markdown') },
   },
   async (args) => mutate('attach', args, () => `Attached version to ${args.artefactId}.`),
