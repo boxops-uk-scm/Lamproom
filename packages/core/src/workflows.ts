@@ -2,6 +2,13 @@
 // after its top-level action (the goal). Connectivity, not parentage, is the
 // boundary: a goal's review action is a top-level sibling that only touches
 // the goal through its deliverable, and it belongs inside the frame.
+//
+// A workflow is the logical unit and the storage unit (one event stream per
+// workflow); the composable unit is the fragment (see fragment.ts), an open
+// hypergraph with a boundary. Commands refuse edges between workflows, so a
+// workflow only ever grows by composing fragments into it: decompositions
+// under an action, policy expansions, and follow-up actions that take its
+// delivered artefacts as inputs after it has finished.
 
 import type { ActionState, Event, State } from './types.js';
 
@@ -13,6 +20,8 @@ export interface Workflow {
   title: string;
   seq: number;
   goal?: ActionState;
+  /** Top-level actions proposed after the goal, taking its deliverables as inputs. */
+  followUps: string[];
   actions: string[];
   artefacts: string[];
   /** Terminal artefacts the goal delivers: the end of each output's closedTo chain. */
@@ -107,22 +116,29 @@ export function workflows(s: State): Workflows {
     const humanQueue = live.filter(
       (t) => (t.status === 'ready' || t.status === 'rework') && t.requires?.actorKind === 'human',
     ).length;
+    // Follow-ups extend a workflow past its goal: top-level, not from policy,
+    // and taking inputs (the goal takes none). The workflow is finished only
+    // when the goal and every live follow-up are.
+    const followUps = topLevel.filter((t) => t !== goal && !t.expandedFrom && t.inputs.length > 0);
+    const liveTop = topLevel.filter((t) => t.status !== 'abandoned');
     let status: WorkflowStatus;
     if (!goal) status = 'blocked';
-    else if (goal.status === 'done') status = 'done';
+    else if (goal.status === 'done' && liveTop.every((t) => t.status === 'done')) status = 'done';
     else if (goal.status === 'abandoned') status = 'abandoned';
     else if (live.some((t) => t.status === 'active')) status = 'active';
     else if (humanQueue) status = 'waiting';
     else if (live.some((t) => (t.status === 'ready' || t.status === 'rework') && t.requires?.actorKind !== 'human')) status = 'ready';
     else status = 'blocked';
+    const deliverers = goal ? [goal, ...followUps] : [];
     const wf: Workflow = {
       id,
       title,
       seq,
       goal,
+      followUps: followUps.map((t) => t.id),
       actions,
       artefacts,
-      deliverables: goal ? [...new Set(goal.outputs.map((o) => terminalOf(s, o)))] : [],
+      deliverables: [...new Set(deliverers.flatMap((t) => t.outputs.map((o) => terminalOf(s, o))))],
       status,
       done,
       total: live.length,
@@ -133,6 +149,26 @@ export function workflows(s: State): Workflows {
   }
   list.sort((a, b) => a.seq - b.seq);
   return { list, of };
+}
+
+/**
+ * The one workflow the given entities belong to, or undefined when none of
+ * them exists yet. Throws when they span workflows: that would be an edge
+ * between workflows, which the model forbids (each workflow is its own
+ * stream, and the union of stream projections must equal the projection of
+ * the union).
+ */
+export function streamOf(s: State, ids: string[], of: Map<string, string> = workflows(s).of): string | undefined {
+  const found = new Set<string>();
+  for (const id of ids) {
+    const w = of.get(id);
+    if (w) found.add(w);
+  }
+  if (found.size > 1) {
+    const names = [...found].map((w) => `"${s.actions[w]?.title ?? s.artefacts[w]?.title ?? w}"`);
+    throw new Error(`these belong to different workflows (${names.join(', ')}); an action cannot join workflows`);
+  }
+  return [...found][0];
 }
 
 /** The action or artefact an event is about. */

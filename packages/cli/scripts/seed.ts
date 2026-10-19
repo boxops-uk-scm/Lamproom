@@ -1,12 +1,22 @@
-// Seeds a demo workflow into a .coalface log so the UI can be exercised
-// without an agent. Run: pnpm --filter @coalface/cli seed [--dir <project>]
-// Acts as two agents and one human, with realistic timestamps.
+// Seeds a demo workflow so the UI can be exercised without an agent. Writes
+// a file log, then imports it into a project on the server when one is
+// named. Acts as two agents and one human, with realistic timestamps.
+//
+//   pnpm --filter @coalface/cli seed --dir <where to write .coalface/events.jsonl>
+//   pnpm --filter @coalface/cli seed --project owner/name [--server url]   (also imports)
 
 import * as core from '@coalface/core';
 import { Store } from '@coalface/core/node';
+import { Client, parseRepo, resolveServer, tokenFor } from '@coalface/client';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
-const dirArg = process.argv.indexOf('--dir');
-const store = Store.resolve(dirArg >= 0 ? process.argv[dirArg + 1] : process.cwd());
+const arg = (name: string) => {
+  const i = process.argv.indexOf(`--${name}`);
+  return i >= 0 ? process.argv[i + 1] : undefined;
+};
+const store = new Store(path.join(arg('dir') ?? fs.mkdtempSync(path.join(os.tmpdir(), 'coalface-seed-')), '.coalface'));
 store.init();
 
 const human: core.Actor = { id: 'human:tom', kind: 'human', name: 'tom' };
@@ -163,4 +173,20 @@ run(a2, (ctx) => core.evaluate(ctx, { actionId: k2.actions[0]!.id, judgement: 'i
 run(a2, (ctx) => core.progress(ctx, { actionId: k2.actions[0]!.id, note: 'Drafting the matrix for node 20 and 22.' }));
 
 console.log(`seeded ${store.readEvents().length} events into ${store.eventsPath}`);
-console.log(core.renderStatus(store.state()));
+const spec = arg('project');
+if (spec) {
+  const repo = parseRepo(spec);
+  if (!repo) throw new Error('--project must be owner/name');
+  const server = resolveServer(arg('server'));
+  const client = new Client(server, tokenFor(server));
+  let p;
+  try {
+    p = await client.projectByRepo(repo.owner, repo.name);
+  } catch {
+    p = await client.createProject(repo.owner, repo.name);
+  }
+  const r = await client.importEvents(p.id, fs.readFileSync(store.eventsPath, 'utf8'));
+  console.log(`imported ${r.imported} events into ${r.streams} stream(s) of ${p.owner}/${p.name} on ${server}`);
+} else {
+  console.log(core.renderStatus(store.state()));
+}

@@ -17,7 +17,9 @@ Do not create, edit, or run anything in the repository. The point of this exerci
 
 ## Starting a workflow
 
-If status shows an empty workflow and you have a goal (from the arguments or the user), propose one top-level action for it. Its outputs must be concrete deliverable artefacts: almost always a `pull-request` with acceptance criteria, sometimes more than one (a PR and a `document`, say), each with its own criteria. Policy automatically adds the human review step. Size it honestly; a goal is nearly always L or XL.
+If you have a goal (from the arguments or the user) that no workflow covers, propose one top-level action for it with no inputs. Its outputs must be concrete deliverable artefacts: almost always a `pull-request` with acceptance criteria, sometimes more than one (a PR and a `document`, say), each with its own criteria. Policy automatically adds the human review step. Size it honestly; a goal is nearly always L or XL.
+
+Each goal is its own workflow, and workflows never share edges: an action's inputs must all come from one workflow. To build on something a finished workflow delivered, propose a **follow-up**: a top-level action (no parent) whose inputs are that workflow's delivered artefacts (the reviewed pull request, the answer). It joins and reopens that workflow rather than starting a new one.
 
 ## The loop
 
@@ -63,3 +65,4 @@ Before stopping, release any action you still hold unless you are mid-implementa
 - An action held by another agent: do not take it unless the user confirms that session is gone; then claim with force.
 - A rejected output (status rework): inspect the artefact to read the rejection reasons, claim the action, fix, attach a new version, complete again.
 - The tracker returns an error: read it, call status, and correct course. Never retry the same call unchanged.
+- The tracker says it is not reachable or not signed in: stop and tell the user to run `coalface serve`, `coalface login` and `coalface init` in a terminal, then restart the session. Do not improvise tracking in files.

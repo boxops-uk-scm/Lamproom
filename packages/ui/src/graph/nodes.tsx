@@ -36,6 +36,9 @@ import {
   User,
   type Icon as PhosphorIcon,
   type IconWeight,
+  GithubLogo,
+  SignOut,
+  FolderSimple,
 } from '@phosphor-icons/react';
 import React, { createContext, useContext, useRef, type ReactNode } from 'react';
 import { CanvasHint } from '../hint';
@@ -175,6 +178,9 @@ const ICONS: Record<string, PhosphorIcon> = {
   shrink: ArrowsInLineVertical,
   trash: Trash,
   x: X,
+  github: GithubLogo,
+  signout: SignOut,
+  folder: FolderSimple,
 };
 
 export function Icon({

@@ -172,9 +172,15 @@ importers:
 
   packages/cli:
     dependencies:
+      '@coalface/client':
+        specifier: workspace:*
+        version: link:../client
       '@coalface/core':
         specifier: workspace:*
         version: link:../core
+      '@coalface/server':
+        specifier: workspace:*
+        version: link:../server
     devDependencies:
       '@types/node':
         specifier: ^24.0.0
@@ -182,6 +188,19 @@ importers:
       esbuild:
         specifier: ^0.25.0
         version: 0.25.12
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
+  packages/client:
+    dependencies:
+      '@coalface/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.19.2
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -200,6 +219,9 @@ importers:
 
   packages/plugin:
     dependencies:
+      '@coalface/client':
+        specifier: workspace:*
+        version: link:../client
       '@coalface/core':
         specifier: workspace:*
         version: link:../core
@@ -219,6 +241,22 @@ importers:
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
+
+  packages/server:
+    dependencies:
+      '@coalface/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.19.2
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/node@24.19.2)(jiti@2.7.0)
 
   packages/ui:
     dependencies:

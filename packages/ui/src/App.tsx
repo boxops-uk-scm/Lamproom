@@ -1,9 +1,11 @@
 import { ReactFlowProvider } from '@xyflow/react';
-import { KNOWN_KINDS, eventEntityId, isBlank, project, richTextItems, summarise, workflows, type Event, type Workflow } from '@coalface/core';
+import { KNOWN_KINDS, emptyState, eventEntityId, extend, isBlank, project, richTextItems, summarise, unionState, workflows, type Event, type State, type Workflow } from '@coalface/core';
 import { Button } from '@astryxdesign/core/Button';
 import { ButtonGroup } from '@astryxdesign/core/ButtonGroup';
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
+import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
+import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { LayoutContent, LayoutFooter } from '@astryxdesign/core/Layout';
@@ -14,15 +16,16 @@ import { ResizeHandle, percent, useResizable } from '@astryxdesign/core/Resizabl
 import { pixel } from '@astryxdesign/core/Resizable/utils';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Slider } from '@astryxdesign/core/Slider';
-import { StackItem } from '@astryxdesign/core/Stack';
+import { Spinner } from '@astryxdesign/core/Spinner';
 import { StatusDot } from '@astryxdesign/core/StatusDot';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
+import { Token } from '@astryxdesign/core/Token';
 import { Theme } from '@astryxdesign/core/theme';
 import { useToast } from '@astryxdesign/core/Toast';
 import { VStack } from '@astryxdesign/core/VStack';
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react';
-import { command, fetchMeta, subscribe, type Meta } from './api';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type FormEvent } from 'react';
+import { command, createProject, fetchMe, fetchProjects, fetchStates, fetchStreamEvents, logout, signInUrl, subscribe, type Me, type Project } from './api';
 import { describeEvent } from './events';
 import { Board } from './board/Board';
 import { Graph } from './graph/Graph';
@@ -86,14 +89,227 @@ export function App() {
   );
 }
 
+type Streams = Record<string, State>;
+
+/** Sign-in, then a project, then the workspace. The URL names the project: /p/owner/name. */
 function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'dark'; setPref: (t: ThemePref) => void }) {
-  const [events, setEvents] = useState<Event[]>([]);
+  const [me, setMe] = useState<Me | null>();
+  const [projects, setProjects] = useState<Project[]>();
+  const [route, setRoute] = useState(() => window.location.pathname);
+  const [addOpen, setAddOpen] = useState(false);
+  const showToast = useToast();
+  const navigate = useCallback((path: string) => {
+    window.history.pushState(null, '', path);
+    setRoute(path);
+  }, []);
+  useEffect(() => {
+    const h = () => setRoute(window.location.pathname);
+    window.addEventListener('popstate', h);
+    return () => window.removeEventListener('popstate', h);
+  }, []);
+  useEffect(() => {
+    fetchMe()
+      .then(setMe)
+      .catch(() => setMe(null));
+  }, []);
+  useEffect(() => {
+    if (!me) return;
+    fetchProjects()
+      .then(setProjects)
+      .catch((e: Error) => showToast({ body: e.message, type: 'error' }));
+  }, [me, showToast]);
+  const project = useMemo(() => projects?.find((p) => `/p/${p.owner}/${p.name}`.toLowerCase() === route.toLowerCase()), [projects, route]);
+  // One project and no address: go straight to it.
+  useEffect(() => {
+    if (projects?.length === 1 && !route.startsWith('/p/')) navigate(`/p/${projects[0]!.owner}/${projects[0]!.name}`);
+  }, [projects, route, navigate]);
+  const pick = useCallback((p: Project) => navigate(`/p/${p.owner}/${p.name}`), [navigate]);
+  const added = useCallback(
+    (p: Project) => {
+      setProjects((ps) => (ps?.some((x) => x.id === p.id) ? ps : [...(ps ?? []), p]));
+      setAddOpen(false);
+      pick(p);
+    },
+    [pick],
+  );
+
+  if (me === undefined) return <Loading />;
+  if (me === null) return <SignIn />;
+  if (!projects) return <Loading />;
+  const addDialog = <AddProjectDialog isOpen={addOpen} onClose={() => setAddOpen(false)} onAdded={added} />;
+  if (!project) {
+    return (
+      <>
+        <Projects projects={projects} me={me} onPick={pick} onAdd={() => setAddOpen(true)} />
+        {addDialog}
+      </>
+    );
+  }
+  return (
+    <>
+      <Workspace key={project.id} project={project} projects={projects} me={me} onSwitch={pick} onAdd={() => setAddOpen(true)} pref={pref} theme={theme} setPref={setPref} />
+      {addDialog}
+    </>
+  );
+}
+
+function Loading() {
+  return (
+    <div className="cf-gate">
+      <Spinner label="Loading" />
+    </div>
+  );
+}
+
+function SignIn() {
+  return (
+    <div className="cf-gate">
+      <div className="cf-gate-card">
+        <span className="cf-logo cf-logo-lg" aria-hidden="true" />
+        <Heading level={1}>Coalface</Heading>
+        <Text as="p" color="secondary">
+          Workflows for agentic development. Sign in with the GitHub account that can see your repositories.
+        </Text>
+        <Button label="Sign in with GitHub" variant="primary" icon={<Icon name="github" size={16} />} onClick={() => window.location.assign(signInUrl)} />
+      </div>
+    </div>
+  );
+}
+
+/** The user's projects, each a GitHub repository registered on this server. */
+function Projects({ projects, me, onPick, onAdd }: { projects: Project[]; me: Me; onPick: (p: Project) => void; onAdd: () => void }) {
+  const add = <Button label="Add project" variant="primary" size="sm" icon={<Icon name="plus" size={14} />} onClick={onAdd} />;
+  return (
+    <div className="cf-app">
+      <header className="cf-top">
+        <div className="cf-brand">
+          <span className="cf-logo" aria-hidden="true" />
+          <span className="cf-brand-name">Coalface</span>
+        </div>
+        <div className="cf-stats" />
+        <div className="cf-tools">
+          <UserMenu me={me} />
+        </div>
+      </header>
+      <main className="cf-gate cf-gate-main">
+        {projects.length ? (
+          <div className="cf-projects">
+            <Text type="label">Projects</Text>
+            <List hasDividers>
+              {projects.map((p) => (
+                <ListItem key={p.id} label={`${p.owner}/${p.name}`} description="GitHub repository" startContent={<Icon name="folder" size={16} />} onClick={() => onPick(p)} />
+              ))}
+            </List>
+            <HStack>{add}</HStack>
+          </div>
+        ) : (
+          <EmptyState
+            title="No projects yet"
+            description="Register a GitHub repository you can see. Agents and the CLI find it by the repository's remote."
+            icon={<Icon name="folder" size={28} />}
+            actions={add}
+          />
+        )}
+      </main>
+    </div>
+  );
+}
+
+function AddProjectDialog({ isOpen, onClose, onAdded }: { isOpen: boolean; onClose: () => void; onAdded: (p: Project) => void }) {
+  const [repo, setRepo] = useState('');
+  const [busy, setBusy] = useState(false);
+  const showToast = useToast();
+  useEffect(() => {
+    if (isOpen) setRepo('');
+  }, [isOpen]);
+  const m = /^\s*(?:https?:\/\/github\.com\/)?([\w.-]+)\/([\w.-]+?)(?:\.git)?\s*$/.exec(repo);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!m) return;
+    setBusy(true);
+    try {
+      onAdded(await createProject(m[1]!, m[2]!));
+    } catch (err) {
+      showToast({ body: err instanceof Error ? err.message : String(err), type: 'error' });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog isOpen={isOpen} onOpenChange={(o) => !o && onClose()} purpose="form" width={440}>
+      <DialogHeader title="Add project" subtitle="A GitHub repository you can see. Its workflows live here; agents in a checkout of it report to this project." />
+      <form onSubmit={submit} className="cf-goal-form">
+        <LayoutContent>
+          <TextInput label="Repository" description="owner/name, or its GitHub address" value={repo} onChange={setRepo} hasAutoFocus isRequired width="100%" />
+        </LayoutContent>
+        <LayoutFooter>
+          <div className="cf-goal-actions">
+            <ButtonGroup label="Project">
+              <Button label="Cancel" variant="secondary" onClick={onClose} isDisabled={busy} />
+              <Button label="Add project" variant="primary" type="submit" isDisabled={!m} isLoading={busy} />
+            </ButtonGroup>
+          </div>
+        </LayoutFooter>
+      </form>
+    </Dialog>
+  );
+}
+
+function UserMenu({ me }: { me: Me }) {
+  const items = [
+    { id: 'who', label: me.user.name ?? me.user.login, description: me.mode === 'dev' ? 'development sign-in' : `GitHub · ${me.user.login}`, isDisabled: true },
+    ...(me.mode === 'dev'
+      ? []
+      : [
+          { type: 'divider' as const },
+          { id: 'out', label: 'Sign out', icon: <Icon name="signout" size={14} />, onClick: () => void logout().then(() => window.location.assign('/')) },
+        ]),
+  ];
+  return (
+    <span className="cf-user">
+      {me.mode === 'dev' && <Token label="dev" size="sm" color="orange" />}
+      <DropdownMenu
+        items={items}
+        alignment="end"
+        menuWidth={240}
+        renderTrigger={(p) => <Button {...p} label={me.user.login} variant="ghost" size="sm" icon={<Icon name="person" size={14} />} />}
+      />
+    </span>
+  );
+}
+
+function Workspace({
+  project: proj,
+  projects,
+  me,
+  onSwitch,
+  onAdd,
+  pref,
+  theme,
+  setPref,
+}: {
+  project: Project;
+  projects: Project[];
+  me: Me;
+  onSwitch: (p: Project) => void;
+  onAdd: () => void;
+  pref: ThemePref;
+  theme: 'light' | 'dark';
+  setPref: (t: ThemePref) => void;
+}) {
+  // One projected state per workflow stream, kept current by the live feed.
+  const [streams, setStreams] = useState<Streams>({});
+  const [head, setHead] = useState<number | null>(null);
+  const [lastLive, setLastLive] = useState<Event>();
   const [connected, setConnected] = useState(false);
-  const [meta, setMeta] = useState<Meta>();
+  // Events per stream, fetched when a workflow is focused, for scrubbing.
+  const cache = useRef<Record<string, Event[]>>({});
+  const pending = useRef<Record<string, Event[]>>({});
+  const [cacheVersion, bumpCache] = useReducer((x: number) => x + 1, 0);
   const [cursor, setCursor] = useState<number | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
-  const [frames, setFrames] = useState<Frames>({});
-  const framesKey = useRef<string | undefined>(undefined);
+  const framesKey = `cf:frames:${proj.id}`;
+  const [frames, setFrames] = useState<Frames>(() => loadFrames(framesKey));
   const [focus, setFocusState] = useState<string[]>([]);
   const [selected, setSelected] = useState<string>();
   const [goalOpen, setGoalOpen] = useState(false);
@@ -122,33 +338,62 @@ function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'da
       // ignore
     }
   }, [view]);
-
-  useEffect(
-    () =>
-      subscribe({
-        snapshot: setEvents,
-        append: (more) => setEvents((prev) => [...prev, ...more]),
-        status: setConnected,
-      }),
-    [],
-  );
   useEffect(() => {
-    fetchMeta()
-      .then((m) => {
-        setMeta(m);
-        framesKey.current = `cf:frames:${m.dir}`;
-        setFrames(loadFrames(framesKey.current));
-      })
-      .catch(() => undefined);
-  }, []);
-  useEffect(() => {
-    if (!framesKey.current) return;
     try {
-      localStorage.setItem(framesKey.current, JSON.stringify(frames));
+      localStorage.setItem(framesKey, JSON.stringify(frames));
     } catch {
       // ignore
     }
-  }, [frames]);
+  }, [frames, framesKey]);
+
+  // Load every stream's state, then follow the feed from that head.
+  useEffect(() => {
+    let stop: (() => void) | undefined;
+    let cancelled = false;
+    fetchStates(proj.id)
+      .then((r) => {
+        if (cancelled) return;
+        const s: Streams = {};
+        for (const st of r.streams) s[st.id] = st.state;
+        setStreams(s);
+        setHead(r.head);
+        stop = subscribe(proj.id, r.head, {
+          append: (events) => {
+            const by = new Map<string, Event[]>();
+            for (const e of events) {
+              const sid = e.stream ?? eventEntityId(e);
+              const list = by.get(sid);
+              if (list) list.push(e);
+              else by.set(sid, [e]);
+            }
+            setStreams((prev) => {
+              const next = { ...prev };
+              for (const [sid, evs] of by) next[sid] = extend(structuredClone(next[sid] ?? emptyState()), evs);
+              return next;
+            });
+            for (const [sid, evs] of by) {
+              const have = cache.current[sid];
+              if (have) {
+                const last = have[have.length - 1]?.seq ?? -1;
+                have.push(...evs.filter((e) => e.seq! > last));
+              } else (pending.current[sid] ??= []).push(...evs);
+            }
+            bumpCache();
+            const tail = events[events.length - 1];
+            if (tail) {
+              setHead(tail.seq!);
+              setLastLive(tail);
+            }
+          },
+          status: setConnected,
+        });
+      })
+      .catch((e: Error) => showToast({ body: e.message, type: 'error' }));
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, [proj.id, showToast]);
 
   const setFocus = useCallback((ids: string[]) => {
     setFocusState(ids);
@@ -177,9 +422,14 @@ function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'da
     return () => window.removeEventListener('keydown', h);
   }, [selected, focus, setFocus]);
 
-  // The live projection and its workflows anchor focus and the scoped timeline.
-  const liveState = useMemo(() => project(events), [events]);
+  // The live projection is the union of the streams; workflows anchor focus and the scoped timeline.
+  const liveState = useMemo(() => unionState(Object.values(streams)), [streams]);
   const wfs = useMemo(() => workflows(liveState), [liveState]);
+  const entityStream = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const [sid, st] of Object.entries(streams)) for (const id of st.order) m.set(id, sid);
+    return m;
+  }, [streams]);
   const focusWfs = useMemo(
     () => focus.map((id) => wfs.list.find((w) => w.id === id)).filter((w): w is Workflow => !!w),
     [focus, wfs],
@@ -190,27 +440,57 @@ function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'da
     if (focusWfs.length !== focus.length) setFocusState(focusWfs.map((w) => w.id));
   }, [focus, focusWfs]);
   const focusLabel = focusWfs.length === 1 ? focusWfs[0]!.title : `${focusWfs.length} workflows`;
+  const focusStreams = useMemo(
+    () => [...new Set(focusWfs.map((w) => entityStream.get(w.id)).filter((s): s is string => !!s))],
+    [focusWfs, entityStream],
+  );
 
-  /** Indices of the events that belong to the focused workflows. */
+  // Scrubbing needs the focused streams' events; fetch them once per stream and keep them current.
+  useEffect(() => {
+    for (const sid of focusStreams) {
+      if (cache.current[sid]) continue;
+      fetchStreamEvents(proj.id, sid)
+        .then((evs) => {
+          const seen = new Set(evs.map((e) => e.seq));
+          const late = (pending.current[sid] ?? []).filter((e) => !seen.has(e.seq));
+          delete pending.current[sid];
+          cache.current[sid] = [...evs, ...late].sort((a, b) => a.seq! - b.seq!);
+          bumpCache();
+        })
+        .catch((e: Error) => showToast({ body: e.message, type: 'error' }));
+    }
+  }, [focusStreams, proj.id, showToast]);
+
+  /** Every event of the focused streams, in commit order, once all are loaded. */
+  const focusAll = useMemo(() => {
+    void cacheVersion;
+    if (!focusStreams.length || !focusStreams.every((sid) => cache.current[sid])) return null;
+    return focusStreams
+      .flatMap((sid) => cache.current[sid]!)
+      .sort((a, b) => a.seq! - b.seq!);
+  }, [focusStreams, cacheVersion]);
+  /** Indices into focusAll of the events that belong to the focused workflows. */
   const focusIdx = useMemo(() => {
-    if (!focus.length) return null;
+    if (!focusAll) return null;
     const out: number[] = [];
-    events.forEach((e, i) => {
+    focusAll.forEach((e, i) => {
       const w = wfs.of.get(eventEntityId(e));
       if (w && focusSet.has(w)) out.push(i);
     });
     return out;
-  }, [events, wfs, focus, focusSet]);
+  }, [focusAll, wfs, focusSet]);
 
   const live = cursor === null;
-  const max = focusIdx ? focusIdx.length : events.length;
-  const viewEvents = useMemo(() => {
-    if (cursor === null) return events;
-    if (!focusIdx) return events.slice(0, cursor);
+  const max = focusIdx ? focusIdx.length : 0;
+  const state = useMemo(() => {
+    if (cursor === null || !focusAll || !focusIdx) return liveState;
     const cut = new Set(focusIdx.slice(cursor));
-    return events.filter((_, i) => !cut.has(i));
-  }, [events, cursor, focusIdx]);
-  const state = useMemo(() => (cursor === null ? liveState : project(viewEvents)), [cursor, liveState, viewEvents]);
+    const viewEvents = focusAll.filter((_, i) => !cut.has(i));
+    const others = Object.entries(streams)
+      .filter(([sid]) => !focusStreams.includes(sid))
+      .map(([, st]) => st);
+    return unionState([project(viewEvents), ...others]);
+  }, [cursor, focusAll, focusIdx, liveState, streams, focusStreams]);
 
   const focusIds = useMemo(
     () => (focusWfs.length ? new Set(focusWfs.flatMap((w) => [...w.actions, ...w.artefacts])) : undefined),
@@ -219,6 +499,7 @@ function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'da
   const sum = useMemo(() => summarise(state, focusIds), [state, focusIds]);
 
   // Groups and workflows fold up the moment they finish: the coal face has been eaten.
+  // A finished workflow that a follow-up reopens unfolds again.
   const seenDone = useRef(new Set<string>());
   useEffect(() => {
     if (!live) return;
@@ -226,9 +507,11 @@ function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'da
       (t) => t.children.length && t.status === 'done' && !seenDone.current.has(t.id),
     );
     const freshWfs = wfs.list.filter((w) => w.status === 'done' && !seenDone.current.has(`wf:${w.id}`));
-    if (!freshGroups.length && !freshWfs.length) return;
+    const reopened = wfs.list.filter((w) => w.status !== 'done' && seenDone.current.has(`wf:${w.id}`));
+    if (!freshGroups.length && !freshWfs.length && !reopened.length) return;
     for (const t of freshGroups) seenDone.current.add(t.id);
     for (const w of freshWfs) seenDone.current.add(`wf:${w.id}`);
+    for (const w of reopened) seenDone.current.delete(`wf:${w.id}`);
     if (freshGroups.length) {
       setCollapsedGroups((prevSet) => {
         const next = new Set(prevSet);
@@ -236,10 +519,11 @@ function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'da
         return next;
       });
     }
-    if (freshWfs.length) {
+    if (freshWfs.length || reopened.length) {
       setFrames((prevFrames) => {
         const next = { ...prevFrames };
         for (const w of freshWfs) next[w.id] = { ...next[w.id], collapsed: true };
+        for (const w of reopened) next[w.id] = { ...next[w.id], collapsed: false };
         return next;
       });
     }
@@ -252,7 +536,7 @@ function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'da
   const run = useCallback(
     async (name: string, args: Record<string, unknown>) => {
       try {
-        const r = await command<{ warnings?: string[] }>(name, args);
+        const r = await command(proj.id, name, args);
         if (r.warnings?.length) showToast({ body: r.warnings.join(' · ') });
         const undo = UNDO[name];
         if (undo && typeof args.actionId === 'string') {
@@ -268,7 +552,7 @@ function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'da
         showToast({ body: e instanceof Error ? e.message : String(e), type: 'error' });
       }
     },
-    [showToast],
+    [proj.id, showToast],
   );
 
   const toggleGroup = useCallback((id: string) => {
@@ -304,14 +588,14 @@ function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'da
   }, []);
 
   const total = focusIds ? focusWfs.reduce((n, w) => n + w.actions.length, 0) : Object.keys(state.actions).length;
-  const lastEvent = focusIdx
-    ? cursor === null
-      ? events[focusIdx[focusIdx.length - 1] ?? -1]
-      : events[focusIdx[cursor - 1] ?? -1]
-    : viewEvents[viewEvents.length - 1];
-  const shown = focusIdx ? (cursor === null ? focusIdx.length : cursor) : viewEvents.length;
-  const lastText = lastEvent ? describeEvent(state, lastEvent) : 'empty log';
+  const lastEvent = focusIdx && focusAll ? focusAll[focusIdx[(cursor ?? focusIdx.length) - 1] ?? -1] : lastLive;
+  const shown = focusIdx ? (cursor ?? focusIdx.length) : null;
+  const lastText = lastEvent ? describeEvent(state, lastEvent) : head === null ? 'loading' : head === 0 ? 'empty log' : `live · ${head} events`;
   const wfOptions = useMemo(() => wfs.list.map((w) => ({ value: w.id, label: w.title })), [wfs]);
+  const projectOptions = useMemo(
+    () => [...projects.map((p) => ({ value: p.id, label: `${p.owner}/${p.name}` })), { value: '__add', label: 'Add project…' }],
+    [projects],
+  );
   const newGoal = (
     <Button
       label="New goal"
@@ -329,15 +613,24 @@ function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'da
         <div className="cf-brand">
           <span className="cf-logo" aria-hidden="true" />
           <span className="cf-brand-name">Coalface</span>
-          {meta && (
-            <Hint content={meta.dir} placement="below">
-              <span className="cf-top-dir">
-                <Text type="code" size="sm" color="secondary">
-                  {shortDir(meta.dir)}
-                </Text>
-              </span>
-            </Hint>
-          )}
+          <span className="cf-top-project">
+            <Selector
+              label="Project"
+              isLabelHidden
+              size="sm"
+              variant="ghost"
+              options={projectOptions}
+              value={proj.id}
+              onChange={(v: string) => {
+                if (v === '__add') onAdd();
+                else {
+                  const p = projects.find((x) => x.id === v);
+                  if (p) onSwitch(p);
+                }
+              }}
+              startIcon={<Icon name="folder" size={14} />}
+            />
+          </span>
           <span className={cx('cf-picker', focus.length > 0 && 'is-focused')}>
             <MultiSelector
               label="Focus workflows"
@@ -364,11 +657,11 @@ function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'da
           <Stat label="undecomposed large" value={sum.undecomposedLarge} tone="muted" title="Large or unsized leaf actions: the honest measure of remaining uncertainty" />
         </div>
         <div className="cf-tools">
-          <Hint content={connected ? 'Connected to the log' : 'Disconnected'} placement="below">
+          <Hint content={connected ? 'Connected to the server' : 'Disconnected'} placement="below">
             <span className={cx('cf-conn', connected ? 'is-on' : 'is-off')}>
               <StatusDot
                 variant={connected ? 'success' : 'neutral'}
-                label={connected ? 'Connected to the log' : 'Disconnected'}
+                label={connected ? 'Connected to the server' : 'Disconnected'}
                 isPulsing={connected}
               />
               <span className="cf-conn-text">{connected ? 'live' : 'offline'}</span>
@@ -407,6 +700,7 @@ function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'da
             icon={<Icon name={pref === 'auto' ? 'auto' : theme === 'dark' ? 'moon' : 'sun'} size={16} />}
             onClick={() => setPref(pref === 'auto' ? 'light' : pref === 'light' ? 'dark' : 'auto')}
           />
+          <UserMenu me={me} />
         </div>
       </header>
 
@@ -431,11 +725,11 @@ function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'da
           ) : (
             <Board state={state} focus={focus} selected={selected} onSelect={setSelected} onFocus={toggleFocus} />
           )}
-          {state.order.length === 0 && (
+          {head !== null && state.order.length === 0 && (
             <div className="cf-empty">
               <EmptyState
                 title="No workflow yet"
-                description="Create a goal here, or tell your agent in Claude Code: /coalface:mine <goal>"
+                description={`Create a goal here, or tell your agent in a checkout of ${proj.owner}/${proj.name}: /coalface:mine <goal>`}
                 icon={<Icon name="flag" size={28} />}
                 actions={newGoal}
               />
@@ -443,14 +737,13 @@ function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'da
           )}
           {!live && (
             <div className="cf-history-banner">
-              Viewing history · event {cursor} of {max}
-              {focusWfs.length ? ` in “${focusLabel}”` : ''}
+              Viewing history · event {cursor} of {max} in “{focusLabel}”
             </div>
           )}
           {view === 'graph' && <Legend />}
         </div>
         <ResizeHandle className="cf-splitter" direction="horizontal" isReversed hasDivider label="Resize the details pane" resizable={pane.props} />
-        <Panel state={state} selected={selected} human={meta?.human} live={live} onSelect={setSelected} run={run} />
+        <Panel state={state} selected={selected} human={me.actor} live={live} onSelect={setSelected} run={run} />
       </main>
 
       <footer className="cf-timeline">
@@ -463,23 +756,27 @@ function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'da
             onClick={() => setCursor(null)}
           />
         </span>
-        <div className="cf-tl-slider">
-          <Slider
-            label={focusWfs.length ? `Replay ${focusLabel}` : 'Replay the event log'}
-            isLabelHidden
-            min={0}
-            max={Math.max(max, 1)}
-            value={cursor ?? max}
-            onChange={(v: number) => setCursor(v >= max ? null : v)}
-            valueDisplay="none"
-            isDisabled={max === 0}
-            width="100%"
-          />
-        </div>
+        <Hint content={focusWfs.length ? undefined : 'Focus a workflow to replay its history'} placement="above">
+          <div className="cf-tl-slider">
+            <Slider
+              label={focusWfs.length ? `Replay ${focusLabel}` : 'Focus a workflow to replay its history'}
+              isLabelHidden
+              min={0}
+              max={Math.max(max, 1)}
+              value={cursor ?? max}
+              onChange={(v: number) => setCursor(v >= max ? null : v)}
+              valueDisplay="none"
+              isDisabled={max === 0}
+              width="100%"
+            />
+          </div>
+        </Hint>
         <span className="cf-tl-label">
-          <span className="cf-tl-n">
-            #{shown}/{max}
-          </span>
+          {shown !== null && (
+            <span className="cf-tl-n">
+              #{shown}/{max}
+            </span>
+          )}
           <Hint content={lastText}>
             <span className="cf-tl-text">
               {lastText}
@@ -775,9 +1072,4 @@ function DeliverableDialog({
       </form>
     </Dialog>
   );
-}
-
-function shortDir(dir: string): string {
-  const parts = dir.replace(/[\\/]+\.coalface$/, '').split(/[\\/]/).filter(Boolean);
-  return parts.slice(-2).join('/');
 }

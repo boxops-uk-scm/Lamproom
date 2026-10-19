@@ -1,11 +1,11 @@
 {
   "name": "coalface",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Hypergraph workflow tracker for agentic development",
   "scripts": {
     "build": "pnpm -r build",
-    "test": "pnpm --filter @coalface/core test",
+    "test": "pnpm --filter @coalface/core --filter @coalface/server test",
     "typecheck": "pnpm -r typecheck",
     "dev:ui": "pnpm --filter @coalface/ui dev",
     "serve": "node packages/cli/dist/coalface.js serve",
@@ -16,6 +16,8 @@
   },
   "packageManager": "pnpm@12.14.0",
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

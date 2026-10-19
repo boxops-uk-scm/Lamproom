@@ -7,19 +7,67 @@ import type {
   State,
 } from './types.js';
 
-function emptyState(): State {
+export function emptyState(): State {
   return { artefacts: {}, actions: {}, order: [], events: [], warnings: [] };
 }
 
-/** Fold the event log into state. Pure and deterministic. */
+/**
+ * Fold the event log into state. Pure and deterministic.
+ *
+ * The log is a grow-only set of events, each with a unique global `seq`, and
+ * the state is a function of that set: events are sorted by seq before the
+ * fold, so any arrival order gives the same state (the set under union is a
+ * join-semilattice, and this projection is monotone over it). Events without
+ * a seq are taken in array order, which is the file-log convention.
+ */
 export function project(events: Event[]): State {
   const s = emptyState();
-  events.forEach((raw, i) => {
-    const e: Event = { ...raw, seq: raw.seq ?? i };
+  const ordered = events.every((e) => typeof e.seq === 'number')
+    ? [...events].sort((a, b) => a.seq! - b.seq!)
+    : events.map((raw, i) => ({ ...raw, seq: raw.seq ?? i }));
+  for (const e of ordered) {
     s.events.push(e);
     apply(s, e);
-  });
+  }
   derive(s);
+  return s;
+}
+
+/**
+ * Apply further events to an existing state, in place, and re-derive. The
+ * events must follow the ones already folded (higher seq). Used to advance a
+ * stored snapshot without replaying the stream.
+ */
+export function extend(s: State, events: Event[]): State {
+  const ordered = [...events].sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
+  for (const e of ordered) {
+    if (typeof e.seq !== 'number') throw new Error('extend needs events with a seq');
+    s.events.push(e);
+    apply(s, e);
+  }
+  derive(s);
+  return s;
+}
+
+/**
+ * The state of several independent streams together. Streams share no
+ * entities (no cross-workflow edges), so the union of their projections is
+ * the projection of their union.
+ */
+export function unionState(states: State[]): State {
+  if (states.length === 1) return states[0]!;
+  const s = emptyState();
+  const order: { id: string; seq: number }[] = [];
+  for (const x of states) {
+    Object.assign(s.artefacts, x.artefacts);
+    Object.assign(s.actions, x.actions);
+    for (const id of x.order) order.push({ id, seq: x.actions[id]?.seq ?? x.artefacts[id]?.seq ?? 0 });
+    s.events.push(...x.events);
+    s.warnings.push(...x.warnings);
+  }
+  order.sort((a, b) => a.seq - b.seq);
+  s.order = order.map((o) => o.id);
+  s.events.sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
   return s;
 }
 

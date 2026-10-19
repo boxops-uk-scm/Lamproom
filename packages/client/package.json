@@ -1,0 +1,20 @@
+{
+  "name": "@coalface/client",
+  "version": "0.2.0",
+  "type": "module",
+  "private": true,
+  "description": "Talks to a coalface server from a terminal or the plugin: config, sign-in, project resolution, API calls",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@coalface/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}

@@ -3,15 +3,19 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
-  "description": "coalface CLI: serve the live graph UI, init a repo, replay a log",
-  "bin": { "coalface": "./dist/coalface.js" },
+  "description": "coalface CLI: run the server, sign in, register a project, act as a human, import and export logs",
+  "bin": {
+    "coalface": "./dist/coalface.js"
+  },
   "scripts": {
     "build": "node build.mjs",
     "seed": "esbuild scripts/seed.ts --bundle --platform=node --format=esm --outfile=dist/seed.mjs --log-level=warning && node dist/seed.mjs",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@coalface/core": "workspace:*"
+    "@coalface/client": "workspace:*",
+    "@coalface/core": "workspace:*",
+    "@coalface/server": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

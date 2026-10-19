@@ -2,21 +2,24 @@
 // against the current projection and perform policy (atom) expansion, so the
 // log stays self-contained: every expansion is recorded as ordinary events.
 
+import { validateFragment, type Fragment } from './fragment.js';
 import { newActionId, newArtefactId, newEventId } from './ids.js';
 import { joinRichText } from './richtext.js';
 import { fill } from './policy.js';
 import { current } from './project.js';
-import type {
-  ActionState,
-  Actor,
-  ArtefactState,
-  Evaluation,
-  Event,
-  EventPayload,
-  Policy,
-  Rung,
-  Size,
-  State,
+import { streamOf, workflows } from './workflows.js';
+import {
+  SCHEMA_VERSION,
+  type ActionState,
+  type Actor,
+  type ArtefactState,
+  type Evaluation,
+  type Event,
+  type EventPayload,
+  type Policy,
+  type Rung,
+  type Size,
+  type State,
 } from './types.js';
 
 export interface Ctx {
@@ -39,6 +42,7 @@ export interface Result {
 function ev(ctx: Ctx, payload: EventPayload, rung: Rung = ctx.rung): Event {
   return {
     ...payload,
+    v: SCHEMA_VERSION,
     id: newEventId(),
     ts: (ctx.now ?? (() => new Date().toISOString()))(),
     actor: ctx.actor,
@@ -80,6 +84,22 @@ function getArtefact(ctx: Ctx, id: string): ArtefactState {
   const a = ctx.state.artefacts[id];
   if (!a) throw new CommandError(`unknown artefact ${id}`);
   return a;
+}
+
+/**
+ * No edges between workflows: everything a command wires together must
+ * already sit in one workflow (or in none). The server also runs commands
+ * against a single stream's state, but the rule is the model's, so it holds
+ * for a whole-project state too.
+ */
+function assertOneWorkflow(ctx: Ctx, ids: string[]): string | undefined {
+  const existing = ids.filter((id) => ctx.state.actions[id] || ctx.state.artefacts[id]);
+  if (existing.length < 2) return undefined;
+  try {
+    return streamOf(ctx.state, existing, workflows(ctx.state).of);
+  } catch (e) {
+    throw new CommandError(e instanceof Error ? e.message : String(e));
+  }
 }
 
 // ---- artefacts ----------------------------------------------------------
@@ -225,6 +245,12 @@ export function proposeActions(ctx: Ctx, input: ProposeInput): ProposeResult {
   const events: Event[] = [];
   const warnings: string[] = [];
   const out: ProposeResult['actions'] = [];
+  // One batch wires into one workflow: the parent, every input, and every
+  // existing output must agree.
+  assertOneWorkflow(ctx, [
+    ...(input.parent ? [input.parent] : []),
+    ...input.actions.flatMap((a) => [...(a.inputs ?? []), ...(a.outputs ?? []).filter((o): o is string => typeof o === 'string')]),
+  ]);
   for (const spec of input.actions) {
     if (!spec.title?.trim()) throw new CommandError('action needs a title');
     const inputs = spec.inputs ?? [];
@@ -259,6 +285,72 @@ export function proposeActions(ctx: Ctx, input: ProposeInput): ProposeResult {
     out.push({ id, title: spec.title, inputs, outputs });
   }
   return { events, warnings, actions: out };
+}
+
+export interface DecomposeInput {
+  parent: string;
+  fragment: Fragment;
+  /** Port or inner-artefact name -> existing artefact id. Every input port must be bound. */
+  bind?: Record<string, string>;
+}
+
+export interface DecomposeResult extends ProposeResult {
+  /** Inner artefact name -> artefact id (declared here or bound). */
+  artefacts: Record<string, string>;
+}
+
+/**
+ * Decompose an action by instantiating a fragment under it. The fragment's
+ * input ports bind to artefacts the parent can see (its own inputs, or any
+ * artefact in the workflow); its output ports bind to the parent's outputs
+ * so the children deliver the parent's deliverables; everything else inside
+ * is declared fresh, with policy expansion as usual. Equivalent to proposing
+ * the children by hand, which is what it records.
+ */
+export function decomposeWith(ctx: Ctx, input: DecomposeInput): DecomposeResult {
+  const parent = getAction(ctx, input.parent);
+  const f = input.fragment;
+  const errors = validateFragment(f);
+  if (errors.length) throw new CommandError(`invalid fragment: ${errors.join('; ')}`);
+  const bind = { ...(input.bind ?? {}) };
+  for (const p of f.inputs) if (!bind[p]) throw new CommandError(`input port "${p}" is not bound to an artefact`);
+  for (const id of Object.values(bind)) getArtefact(ctx, id);
+  assertOneWorkflow(ctx, [parent.id, ...Object.values(bind)]);
+  for (const name of Object.keys(bind)) {
+    if (!f.inputs.includes(name) && !(name in f.artefacts)) throw new CommandError(`bound name "${name}" is not a port or inner artefact`);
+  }
+  // Output ports left unbound take the parent's outputs in order, so a
+  // fragment shaped like the parent delivers what the parent promised.
+  const free = f.outputs.filter((o) => !bind[o] && !f.inputs.includes(o));
+  const unclaimed = parent.outputs.filter((o) => !Object.values(bind).includes(o));
+  free.forEach((o, i) => {
+    if (unclaimed[i]) bind[o] = unclaimed[i]!;
+  });
+  const events: Event[] = [];
+  const warnings: string[] = [];
+  const ids: Record<string, string> = { ...bind };
+  for (const [name, a] of Object.entries(f.artefacts)) {
+    if (ids[name]) continue;
+    const d = declareArtefact(ctx, { kind: a.kind, title: a.title, criteria: a.criteria, parent: parent.id });
+    events.push(...d.events);
+    warnings.push(...d.warnings);
+    ids[name] = d.id;
+  }
+  const out: ProposeResult['actions'] = [];
+  for (const a of f.actions) {
+    const id = newActionId();
+    const inputs = a.inputs.map((x) => ids[x]!);
+    const outputs = a.outputs.map((x) => ids[x]!);
+    events.push(
+      ev(ctx, {
+        type: 'action.proposed',
+        action: { id, title: a.title, description: a.description, parent: parent.id, inputs, outputs, size: a.size, requires: a.requires },
+      }),
+    );
+    out.push({ id, title: a.title, inputs, outputs });
+  }
+  const inner = Object.fromEntries(Object.keys(f.artefacts).map((n) => [n, ids[n]!]));
+  return { events, warnings, actions: out, artefacts: inner };
 }
 
 export function evaluate(ctx: Ctx, input: { actionId: string } & Evaluation): Result {
@@ -363,6 +455,7 @@ export function amend(ctx: Ctx, input: AmendInput): Result & { addedOutputs: str
   const t = getAction(ctx, input.actionId);
   const events: Event[] = [];
   for (const i of input.addInputs ?? []) getArtefact(ctx, i);
+  assertOneWorkflow(ctx, [t.id, ...(input.addInputs ?? []), ...(input.addOutputs ?? []).filter((o): o is string => typeof o === 'string')]);
   const addOutputs: string[] = [];
   for (const o of input.addOutputs ?? []) {
     if (typeof o === 'string') {

@@ -104,9 +104,20 @@ export type Event = EventPayload & {
   /** Whose decision it records, when an agent relays a human's answer or verdict. */
   onBehalfOf?: Actor;
   rung: Rung;
-  /** Position in the log, assigned at read time (line number). */
+  /** Event schema version (SCHEMA_VERSION when written); readers upcast older shapes. */
+  v?: number;
+  /** Global position, assigned by the store at commit. Orders events across streams. */
   seq?: number;
+  /** The workflow stream this event belongs to, assigned by the store at commit. */
+  stream?: string;
+  /** Position within its stream, dense from 1, assigned by the store at commit. */
+  rev?: number;
 };
+
+/** Bumped when the event shape changes; see upcast.ts. */
+export const SCHEMA_VERSION = 1;
+/** Bumped when the projection changes; stored snapshots with another version are rebuilt. */
+export const PROJECTION_VERSION = 2;
 
 // ---- Policy -------------------------------------------------------------
 

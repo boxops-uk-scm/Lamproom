@@ -7,6 +7,7 @@ import path from 'node:path';
 import type { Ctx, Result } from './commands.js';
 import { DEFAULT_POLICY, mergePolicy, validatePolicy } from './policy.js';
 import { project } from './project.js';
+import { upcast } from './upcast.js';
 import type { Actor, Event, Policy, Rung, State } from './types.js';
 
 export const DIR_NAME = '.coalface';
@@ -48,15 +49,20 @@ export class Store {
   }
 
   readEvents(): Event[] {
-    if (!fs.existsSync(this.eventsPath)) return [];
-    const text = fs.readFileSync(this.eventsPath, 'utf8');
+    return this.readEventsFrom(this.eventsPath);
+  }
+
+  /** Read any JSON-lines log; seq is the line position. */
+  readEventsFrom(file: string): Event[] {
+    if (!fs.existsSync(file)) return [];
+    const text = fs.readFileSync(file, 'utf8');
     const events: Event[] = [];
     let seq = 0;
     for (const line of text.split('\n')) {
       const trimmed = line.trim();
       if (!trimmed) continue;
       try {
-        events.push({ ...(JSON.parse(trimmed) as Event), seq });
+        events.push({ ...upcast(JSON.parse(trimmed)), seq });
       } catch {
         // A torn write; skip the line but keep seq stable for later lines.
       }
@@ -105,8 +111,9 @@ export class Store {
   }
 }
 
-function stripSeq(e: Event): Omit<Event, 'seq'> {
-  const { seq: _seq, ...rest } = e;
+/** The store's own fields (positions) never go into the file; it assigns them on read. */
+function stripSeq(e: Event): Omit<Event, 'seq' | 'stream' | 'rev'> {
+  const { seq: _seq, stream: _stream, rev: _rev, ...rest } = e;
   return rest;
 }
 

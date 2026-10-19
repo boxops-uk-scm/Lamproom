@@ -6,12 +6,29 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import * as core from '@coalface/core';
-import { Store, agentActor } from '@coalface/core/node';
+import { Client, ClientError, resolveProject, resolveServer, tokenFor, type CommandResponse, type Project } from '@coalface/client';
 
-const store = Store.resolve(process.cwd());
-const me = agentActor();
+// The agent is a label under the signed-in human's token; the server
+// stamps every event with agent:<label> and the human as principal.
+const label = process.env.COALFACE_AGENT ?? Math.random().toString(36).slice(2, 7);
+const serverUrl = resolveServer();
+const client = new Client(serverUrl, tokenFor(serverUrl));
+const meId = `agent:${label}`;
 
-const server = new McpServer({ name: 'coalface', version: '0.1.0' });
+let projectCache: Project | undefined;
+async function project(): Promise<Project> {
+  if (!projectCache) projectCache = await resolveProject(client, process.cwd());
+  return projectCache;
+}
+
+/** Whole-project state, the union of every workflow stream. */
+async function state(): Promise<core.State> {
+  const p = await project();
+  const r = await client.states(p.id);
+  return core.unionState(r.streams.map((s) => s.state));
+}
+
+const server = new McpServer({ name: 'coalface', version: '0.2.0' });
 
 type ToolResult = { content: { type: 'text'; text: string }[]; isError?: boolean };
 const text = (t: string): ToolResult => ({ content: [{ type: 'text', text: t }] });
@@ -31,21 +48,29 @@ function faceLine(s: core.State): string {
   );
 }
 
-const principal: core.Actor | undefined = me.principal ? { id: me.principal, kind: 'human' } : undefined;
+function explain(e: unknown): string {
+  if (e instanceof ClientError) {
+    if (e.status === 401) return `${e.message}. The human must run "coalface login" in a terminal, then restart this session.`;
+    return e.message;
+  }
+  return e instanceof Error ? e.message : String(e);
+}
 
-function mutate<T extends core.Result>(
-  fn: (ctx: core.Ctx) => T,
-  describe: (r: T) => string,
-  onBehalfOf?: core.Actor,
-): ToolResult {
+async function mutate(
+  command: string,
+  args: Record<string, unknown>,
+  describe: (r: CommandResponse) => string,
+  onBehalfOf = false,
+): Promise<ToolResult> {
   try {
-    const r = store.run(me, 'reported', fn, onBehalfOf);
+    const p = await project();
+    const r = await client.command(p.id, { command, args, agent: label, onBehalfOf });
     const lines = [describe(r)];
     if (r.warnings.length) lines.push(`Warnings: ${r.warnings.join('; ')}`);
-    lines.push(faceLine(store.state()));
+    lines.push(faceLine(await state()));
     return text(lines.join('\n'));
   } catch (e) {
-    return fail(e instanceof Error ? e.message : String(e));
+    return fail(explain(e));
   }
 }
 
@@ -70,14 +95,10 @@ server.registerTool(
   },
   async () => {
     try {
-      if (!store.exists()) {
-        return text(
-          `You are ${me.id}. No workflow exists in this project yet (log would be ${store.eventsPath}). Start one by proposing a top-level action for the goal with a concrete output artefact.`,
-        );
-      }
-      return text(`You are ${me.id}.\n${core.renderStatus(store.state(), me)}`);
+      const p = await project();
+      return text(`You are ${meId} in ${p.owner}/${p.name}.\n${await client.status(p.id, label)}`);
     } catch (e) {
-      return fail(e instanceof Error ? e.message : String(e));
+      return fail(explain(e));
     }
   },
 );
@@ -90,7 +111,12 @@ server.registerTool(
     inputSchema: { id: z.string() },
   },
   async ({ id }) => {
-    const s = store.state();
+    let s: core.State;
+    try {
+      s = await state();
+    } catch (e) {
+      return fail(explain(e));
+    }
     const t = s.actions[id];
     if (t) {
       const lines = [core.describeAction(s, t, true)];
@@ -123,7 +149,7 @@ server.registerTool(
   {
     title: 'Propose actions',
     description:
-      'Add actions to the workflow. With no parent this starts a top-level goal; with a parent it decomposes that action into children (call evaluate with judgement "decompose" first). Outputs may be existing artefact ids or new artefacts declared inline; declaring a pull-request or question automatically adds the human review or answer step required by policy. Inputs are artefact ids the action needs before it can start.',
+      'Add actions to the workflow. With no parent and no inputs this starts a new goal (its own workflow); with a parent it decomposes that action into children (call evaluate with judgement "decompose" first); with inputs from a finished workflow\'s delivered artefacts and no parent it is a follow-up that extends that workflow. Outputs may be existing artefact ids or new artefacts declared inline; declaring a pull-request or question automatically adds the human review or answer step required by policy. Inputs are artefact ids the action needs before it can start; they must all belong to one workflow.',
     inputSchema: {
       parent: z.string().optional().describe('action id being decomposed'),
       actions: z
@@ -140,14 +166,15 @@ server.registerTool(
     },
   },
   async (args) =>
-    mutate(
-      (ctx) => core.proposeActions(ctx, args),
-      (r) =>
+    mutate('propose', args, (r) => {
+      const acts = (r.actions as { id: string; title: string; inputs: string[]; outputs: string[] }[]) ?? [];
+      return (
         'Proposed:\n' +
-        r.actions
+        acts
           .map((a) => `- ${a.id} "${a.title}" outputs: ${a.outputs.join(', ') || 'none'}${a.inputs.length ? ` inputs: ${a.inputs.join(', ')}` : ''}`)
-          .join('\n'),
-    ),
+          .join('\n')
+      );
+    }),
 );
 
 server.registerTool(
@@ -165,7 +192,7 @@ server.registerTool(
       rationale: z.string().optional().describe('Markdown'),
     },
   },
-  async (args) => mutate((ctx) => core.evaluate(ctx, args), () => `Evaluated ${args.actionId}: ${args.judgement}${args.size ? ` (${args.size})` : ''}.`),
+  async (args) => mutate('evaluate', args, () => `Evaluated ${args.actionId}: ${args.judgement}${args.size ? ` (${args.size})` : ''}.`),
 );
 
 server.registerTool(
@@ -175,7 +202,7 @@ server.registerTool(
     description: 'Take an action from the coal face before working on it. Fails if another agent holds it unless force is set, which is only for sessions known to be dead.',
     inputSchema: { actionId: z.string(), force: z.boolean().optional() },
   },
-  async (args) => mutate((ctx) => core.claim(ctx, args), () => `Claimed ${args.actionId}.`),
+  async (args) => mutate('claim', args, () => `Claimed ${args.actionId}.`),
 );
 
 server.registerTool(
@@ -185,7 +212,7 @@ server.registerTool(
     description: 'Give up a claim without completing, e.g. when stopping for the turn or handing over.',
     inputSchema: { actionId: z.string(), reason: z.string().optional().describe('Markdown') },
   },
-  async (args) => mutate((ctx) => core.release(ctx, args), () => `Released ${args.actionId}.`),
+  async (args) => mutate('release', args, () => `Released ${args.actionId}.`),
 );
 
 server.registerTool(
@@ -195,7 +222,7 @@ server.registerTool(
     description: 'Append a short progress note to an action you hold. One or two sentences about what was just done or decided.',
     inputSchema: { actionId: z.string(), note: z.string().describe('Markdown') },
   },
-  async (args) => mutate((ctx) => core.progress(ctx, args), () => `Noted on ${args.actionId}.`),
+  async (args) => mutate('progress', args, () => `Noted on ${args.actionId}.`),
 );
 
 server.registerTool(
@@ -206,7 +233,7 @@ server.registerTool(
       'Record that an artefact now exists or has a new version. ref is a pointer to it: a commit SHA, PR number, file path, URL, or for mocked work a short "mock:" description. A new version clears an earlier rejection.',
     inputSchema: { artefactId: z.string(), ref: z.string(), note: z.string().optional().describe('Markdown') },
   },
-  async (args) => mutate((ctx) => core.attachVersion(ctx, args), () => `Attached version to ${args.artefactId}.`),
+  async (args) => mutate('attach', args, () => `Attached version to ${args.artefactId}.`),
 );
 
 server.registerTool(
@@ -216,7 +243,7 @@ server.registerTool(
     description: 'Mark an action finished. Attach versions to its outputs first. If an output needs human review, the action shows as submitted until the review lands.',
     inputSchema: { actionId: z.string(), note: z.string().optional().describe('Markdown') },
   },
-  async (args) => mutate((ctx) => core.complete(ctx, args), () => `Completed ${args.actionId}.`),
+  async (args) => mutate('complete', args, () => `Completed ${args.actionId}.`),
 );
 
 server.registerTool(
@@ -231,7 +258,7 @@ server.registerTool(
       context: z.string().optional().describe('what you considered and why you cannot decide; Markdown'),
     },
   },
-  async (args) => mutate((ctx) => core.ask(ctx, args), (r) => `Asked ${r.questionId}; ${args.actionId} is blocked on ${r.answerId} and released.`),
+  async (args) => mutate('ask', args, (r) => `Asked ${String(r.questionId)}; ${args.actionId} is blocked on ${String(r.answerId)} and released.`),
 );
 
 server.registerTool(
@@ -251,10 +278,10 @@ server.registerTool(
     },
   },
   async (args) =>
-    mutate(
-      (ctx) => core.amend(ctx, args),
-      (r) => `Amended ${args.actionId}.${r.addedOutputs.length ? ` New outputs: ${r.addedOutputs.join(', ')}` : ''}`,
-    ),
+    mutate('amend', args, (r) => {
+      const added = (r.addedOutputs as string[]) ?? [];
+      return `Amended ${args.actionId}.${added.length ? ` New outputs: ${added.join(', ')}` : ''}`;
+    }),
 );
 
 server.registerTool(
@@ -264,7 +291,7 @@ server.registerTool(
     description: 'Drop an action that should not be done. Say why. Prefer this over leaving dead actions on the face.',
     inputSchema: { actionId: z.string(), reason: z.string().optional().describe('Markdown') },
   },
-  async (args) => mutate((ctx) => core.abandon(ctx, args), () => `Abandoned ${args.actionId}.`),
+  async (args) => mutate('abandon', args, () => `Abandoned ${args.actionId}.`),
 );
 
 server.registerTool(
@@ -274,7 +301,7 @@ server.registerTool(
     description: 'Undo an abandonment: the action returns to the face as its inputs allow. For an action abandoned by mistake, or one that circumstances brought back.',
     inputSchema: { actionId: z.string(), note: z.string().optional().describe('Markdown') },
   },
-  async (args) => mutate((ctx) => core.restore(ctx, args), () => `Restored ${args.actionId}.`),
+  async (args) => mutate('restore', args, () => `Restored ${args.actionId}.`),
 );
 
 server.registerTool(
@@ -284,7 +311,7 @@ server.registerTool(
     description: 'Undo a completion: the action is workable again and its outputs keep their versions. For when more work turned out to be needed.',
     inputSchema: { actionId: z.string(), note: z.string().optional().describe('Markdown') },
   },
-  async (args) => mutate((ctx) => core.reopen(ctx, args), () => `Reopened ${args.actionId}.`),
+  async (args) => mutate('reopen', args, () => `Reopened ${args.actionId}.`),
 );
 
 server.registerTool(
@@ -302,10 +329,7 @@ server.registerTool(
     },
   },
   async (args) =>
-    mutate(
-      (ctx) => core.declareArtefact(ctx, args),
-      (r) => `Declared ${r.id}.${r.terminalId ? ` Policy added ${r.atomActionId} producing ${r.terminalId}.` : ''}`,
-    ),
+    mutate('declare', args, (r) => `Declared ${String(r.id)}.${r.terminalId ? ` Policy added ${String(r.atomActionId)} producing ${String(r.terminalId)}.` : ''}`),
 );
 
 server.registerTool(
@@ -316,12 +340,7 @@ server.registerTool(
       'Record an answer the human gave you in chat to one of your questions, on their behalf. The log attributes the answer to the human with you as the relay. Only for questions; never invent an answer, and never use this for pull-request reviews.',
     inputSchema: { questionId: z.string().describe('the question artefact id (a-...)'), text: z.string().describe('the answer as given; Markdown') },
   },
-  async (args) =>
-    mutate(
-      (ctx) => core.answer(ctx, args),
-      () => `Recorded the answer to ${args.questionId} on behalf of ${principal?.id ?? 'your principal'}.`,
-      principal,
-    ),
+  async (args) => mutate('answer', args, () => `Recorded the answer to ${args.questionId} on behalf of your principal.`, true),
 );
 
 server.registerTool(
@@ -336,14 +355,9 @@ server.registerTool(
       notes: z.array(z.string()).optional().describe('Markdown, one per item'),
     },
   },
-  async (args) =>
-    mutate(
-      (ctx) => core.review(ctx, args),
-      () => `Recorded ${args.verdict} for ${args.artefactId} on behalf of ${principal?.id ?? 'your principal'}.`,
-      principal,
-    ),
+  async (args) => mutate('review', args, () => `Recorded ${args.verdict} for ${args.artefactId} on behalf of your principal.`, true),
 );
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
-process.stderr.write(`coalface mcp ready as ${me.id}, log ${store.eventsPath}\n`);
+process.stderr.write(`coalface mcp ready as ${meId} against ${serverUrl}\n`);

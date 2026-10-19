@@ -152,9 +152,54 @@ body {
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
   flex: none;
 }
-.cf-top-dir {
+.cf-top-project {
   margin-left: 2px;
   white-space: nowrap;
+}
+.cf-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+}
+
+/* Sign-in, loading and the project list: one centred column on the app ground. */
+.cf-gate {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
+  background: var(--background-app, var(--surface));
+  color: var(--text);
+}
+.cf-gate-main {
+  min-height: 0;
+  flex: 1;
+  align-content: start;
+  padding-top: 48px;
+}
+.cf-gate-card {
+  width: min(380px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lift);
+}
+.cf-logo-lg {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+}
+.cf-projects {
+  width: min(560px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 .cf-picker {
   margin-left: 6px;
