@@ -1,0 +1,1309 @@
+/* ---- tokens -------------------------------------------------------------- */
+
+/* Coalface's own names are aliases onto the Astryx tokens, which the Boxops
+   theme fills in (src/theme/boxopsTheme.tsx). They are declared on the theme
+   wrapper rather than :root so they resolve from the first paint; Astryx only
+   stamps <html> after mount. Light and dark are inside the tokens already. */
+[data-astryx-theme] {
+  --font: var(--font-family-body);
+  --mono: var(--font-family-code);
+
+  --bg: var(--color-background-body);
+  --canvas: color-mix(in srgb, var(--color-text-primary) 4%, var(--color-background-body));
+  --surface: var(--color-background-card);
+  --surface-2: var(--color-background-muted);
+  --border: var(--color-border);
+  --border-strong: var(--color-border-emphasized);
+  --text: var(--color-text-primary);
+  --text-muted: var(--color-text-secondary);
+  --text-faint: var(--color-text-disabled);
+  --edge: var(--color-border-emphasized);
+  --edge-hot: var(--color-text-primary);
+  --shadow: var(--shadow-low);
+  --shadow-lift: var(--shadow-med);
+  --accent: var(--color-accent);
+  --accent-text: var(--color-on-accent);
+
+  /* Workflow states, in Boxops hues. Keep in step with STATUS_HUE in nodes.tsx. */
+  --c-ready: var(--color-icon-orange);
+  --c-rework: var(--color-error);
+  --c-active: var(--color-accent);
+  --c-submitted: var(--color-icon-purple);
+  --c-blocked: var(--color-text-disabled);
+  --c-decomposed: var(--color-icon-teal);
+  --c-done: var(--color-success);
+  --c-abandoned: var(--color-text-disabled);
+  --c-human: var(--color-icon-pink);
+  --c-artefact: var(--color-icon-secondary);
+  --c-ready-bg: var(--color-background-orange);
+  --c-human-bg: var(--color-background-pink);
+  --group-bg: color-mix(in srgb, var(--color-icon-teal) 5%, transparent);
+  --group-border: color-mix(in srgb, var(--color-icon-teal) 40%, transparent);
+}
+
+/* ---- base ---------------------------------------------------------------- */
+
+html,
+body,
+#root,
+#root > [data-astryx-theme] {
+  height: 100%;
+}
+#root > [data-astryx-theme] {
+  display: block;
+}
+body {
+  margin: 0;
+  background: var(--color-background-body, light-dark(#fff, #1b2126));
+  color: var(--color-text-primary, light-dark(#1b1b1b, #e6e6e6));
+  font-family: var(--font-family-body, 'Open Sans', system-ui, sans-serif);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.cf-muted {
+  color: var(--text-muted);
+}
+.cf-spacer {
+  flex: 1;
+}
+.cf-icon {
+  flex: none;
+}
+.cf-icon.is-down {
+  transform: rotate(90deg);
+}
+
+/* ---- status colours via a single custom property -------------------------- */
+
+.st-ready { --st: var(--c-ready); }
+.st-rework { --st: var(--c-rework); }
+.st-active { --st: var(--c-active); }
+.st-submitted { --st: var(--c-submitted); }
+.st-blocked { --st: var(--c-blocked); }
+.st-decomposed { --st: var(--c-decomposed); }
+.st-done { --st: var(--c-done); }
+.st-abandoned { --st: var(--c-abandoned); }
+.is-human.st-ready,
+.is-human.st-rework { --st: var(--c-human); }
+
+.as-declared { --as: transparent; --as-ring: var(--border-strong); }
+.as-produced { --as: var(--c-active); --as-ring: var(--c-active); }
+.as-accepted { --as: var(--c-done); --as-ring: var(--c-done); }
+.as-rejected { --as: var(--c-rework); --as-ring: var(--c-rework); }
+.as-invalidated { --as: var(--c-blocked); --as-ring: var(--c-blocked); }
+
+.cf-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--st, var(--c-blocked));
+  flex: none;
+}
+.cf-adot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--as, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--as-ring, var(--border-strong));
+  flex: none;
+}
+.st-active .cf-dot {
+  box-shadow: 0 0 0 0 var(--st);
+  animation: cf-pulse 1.6s ease-out infinite;
+}
+@keyframes cf-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--st) 55%, transparent); }
+  100% { box-shadow: 0 0 0 7px transparent; }
+}
+
+/* ---- layout -------------------------------------------------------------- */
+
+.cf-app {
+  display: grid;
+  grid-template-rows: 52px 1fr 44px;
+  height: 100%;
+}
+.cf-top {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.cf-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.cf-brand-name {
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+}
+.cf-logo {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: linear-gradient(135deg, var(--c-ready), color-mix(in srgb, var(--c-ready) 70%, black));
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+  flex: none;
+}
+.cf-top-dir {
+  margin-left: 2px;
+  white-space: nowrap;
+}
+.cf-picker {
+  margin-left: 6px;
+}
+.cf-stats {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.cf-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-element);
+  --st: var(--text-muted);
+}
+.cf-stat.tone-ready { --st: var(--c-ready); }
+.cf-stat.tone-human { --st: var(--c-human); }
+.cf-stat.tone-active { --st: var(--c-active); }
+.cf-stat.tone-done { --st: var(--c-done); }
+.cf-stat-value {
+  font-weight: 700;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--st);
+}
+.cf-stat-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.cf-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cf-conn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.cf-main {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto var(--panel-w, 380px);
+  min-height: 0;
+}
+/* The Astryx resize handle sits in its own column and draws the divider. */
+.cf-splitter {
+  align-self: stretch;
+  z-index: 6;
+}
+.cf-canvas {
+  position: relative;
+  min-width: 0;
+  background: var(--canvas);
+}
+
+/* ---- graph nodes --------------------------------------------------------- */
+
+.react-flow {
+  background: var(--canvas);
+}
+.react-flow__node {
+  cursor: pointer;
+}
+.cf-handle {
+  width: 6px;
+  height: 6px;
+  min-width: 0;
+  min-height: 0;
+  border: none;
+  background: transparent;
+  pointer-events: none;
+}
+.cf-enter {
+  animation: cf-enter 420ms ease-out both;
+}
+@keyframes cf-enter {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+/* A node's edge carries its state: the border is the status hue itself, the
+   same as an action's strip and an artefact's glyph and dot. Hover and
+   selection recolour the whole outline, strip included. */
+.cf-node {
+  --node-edge: var(--border);
+  position: relative;
+  height: 100%;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--node-edge-live, var(--node-edge));
+  box-shadow: var(--shadow);
+  transition: box-shadow 160ms, border-color 160ms, transform 160ms;
+}
+.cf-node.is-selected {
+  --node-edge-live: var(--edge-hot);
+  box-shadow: var(--shadow-lift), 0 0 0 2px color-mix(in srgb, var(--edge-hot) 20%, transparent);
+}
+/* Hover lifts and pulls the whole outline, strip included, toward the text
+   colour: deeper in light mode, lighter in dark. */
+.react-flow__node:hover .cf-node:not(.is-selected) {
+  --node-edge-live: color-mix(in srgb, var(--node-edge) 75%, var(--text));
+  box-shadow: var(--shadow-lift);
+}
+
+/* The status strip is the left border itself, so it meets the rest of the
+   edge through the corner curve with nothing painted over or clipped. */
+.cf-action {
+  --node-edge: var(--st, var(--border));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 12px 9px 11px;
+  border-left: 4px solid var(--node-edge-live, var(--st, var(--c-blocked)));
+  border-radius: var(--radius-container);
+  overflow: hidden;
+}
+.cf-action.st-blocked {
+  background: color-mix(in srgb, var(--text) 3%, var(--surface));
+}
+.cf-action.st-blocked .cf-title,
+.cf-action.st-abandoned .cf-title {
+  color: var(--text-muted);
+}
+.cf-action.st-abandoned .cf-title {
+  text-decoration: line-through;
+}
+.cf-action.st-ready {
+  background: color-mix(in srgb, var(--c-ready) 9%, var(--surface));
+}
+.cf-action.is-human.st-ready {
+  background: color-mix(in srgb, var(--c-human) 9%, var(--surface));
+}
+.cf-action.st-done {
+  opacity: 0.78;
+}
+.cf-action.is-collapsed {
+  box-shadow: var(--shadow), 3px 3px 0 -1px var(--surface), 3px 3px 0 0 var(--border);
+}
+.cf-action-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--st, var(--text-muted));
+  font-weight: 700;
+}
+.cf-action.st-blocked .cf-action-head,
+.cf-action.st-done .cf-action-head,
+.cf-action.st-abandoned .cf-action-head {
+  color: var(--text-muted);
+}
+.cf-human-mark {
+  color: var(--c-human);
+}
+.cf-size {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+  padding: 1px 5px;
+  border-radius: var(--radius-inner);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--text-muted);
+  flex: none;
+}
+.cf-title {
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cf-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: auto;
+}
+.cf-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cf-artefact {
+  --node-edge: var(--as, var(--border));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 0 11px;
+  border-radius: 999px;
+  color: var(--text);
+}
+/* The kind glyph and the dot take the artefact's state hue, like its edge,
+   and follow it through hover and selection. */
+.cf-artefact .cf-kind {
+  color: var(--node-edge-live, var(--as, var(--text-muted)));
+  flex: none;
+}
+.cf-artefact:not(.as-declared) .cf-adot {
+  background: var(--node-edge-live, var(--as));
+  box-shadow: inset 0 0 0 1.5px var(--node-edge-live, var(--as-ring));
+}
+.cf-artefact.as-declared .cf-kind {
+  color: var(--text-muted);
+}
+.cf-artefact.as-declared {
+  --node-edge: var(--border);
+  background: color-mix(in srgb, var(--text) 3%, var(--surface));
+  color: var(--text-muted);
+}
+.cf-artefact-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  font-size: 12.5px;
+}
+
+.cf-group {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  background: var(--group-bg);
+  border: 1.5px solid var(--group-border);
+  transition: border-color 160ms, box-shadow 160ms;
+}
+.cf-group.st-done {
+  --group-border: color-mix(in srgb, var(--c-done) 45%, transparent);
+  --group-bg: color-mix(in srgb, var(--c-done) 5%, transparent);
+}
+.cf-group.is-selected {
+  border-style: solid;
+  border-color: var(--edge-hot);
+}
+.cf-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 0 8px;
+  height: 40px;
+}
+.cf-group-title {
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cf-group-progress {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+/* An Astryx progress bar with its count beside it, sized for a header row. */
+.cf-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.cf-progress-bar {
+  display: block;
+  flex: none;
+}
+.cf-progress-n {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ---- edges --------------------------------------------------------------- */
+
+.react-flow__edge.cf-edge .react-flow__edge-path {
+  stroke: var(--edge);
+  stroke-width: 1.6;
+  transition: stroke 160ms, stroke-width 160ms;
+}
+.react-flow__edge.cf-edge.is-hot .react-flow__edge-path {
+  stroke: var(--edge-hot);
+  stroke-width: 2.2;
+}
+.react-flow__arrowhead polyline {
+  fill: var(--edge);
+  stroke: var(--edge);
+}
+.react-flow__edge.is-hot .react-flow__arrowhead polyline {
+  fill: var(--edge-hot);
+  stroke: var(--edge-hot);
+}
+
+/* ---- react flow chrome --------------------------------------------------- */
+
+.react-flow__minimap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-container);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.react-flow__minimap-mask {
+  fill: color-mix(in srgb, var(--text) 7%, transparent);
+}
+.react-flow__background circle {
+  fill: color-mix(in srgb, var(--text) 14%, transparent);
+}
+
+/* ---- canvas overlays ----------------------------------------------------- */
+
+.cf-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.cf-empty > * {
+  pointer-events: auto;
+}
+.cf-history-banner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--color-background-inverted);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  z-index: 4;
+}
+.cf-legend {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 6px 10px;
+  border-radius: var(--radius-element);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.cf-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.cf-legend .is-human {
+  color: var(--c-human);
+}
+
+/* ---- panel --------------------------------------------------------------- */
+
+.cf-panel {
+  background: var(--surface);
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+  padding: 0 0 24px;
+  overflow-wrap: anywhere;
+}
+.cf-panel-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.cf-panel-head {
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cf-crumbs {
+  min-width: 0;
+}
+.cf-section {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cf-section-title {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.cf-sub {
+  margin-top: 4px;
+}
+.cf-criteria {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  list-style: disc;
+}
+.cf-criteria li::marker {
+  color: var(--c-done);
+}
+.cf-criteria.is-unknown li::marker {
+  color: var(--c-ready);
+}
+.cf-refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cf-refs.is-col {
+  flex-direction: column;
+  align-items: flex-start;
+}
+.cf-ref {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+}
+.cf-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cf-log li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+}
+.cf-log li.is-accepted {
+  border-left-color: var(--c-done);
+}
+.cf-log li.is-rejected {
+  border-left-color: var(--c-rework);
+}
+.cf-log-type {
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+.cf-log-actor {
+  color: var(--text-faint);
+  font-size: 11px;
+  text-align: right;
+}
+.cf-log-note {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+}
+
+/* ---- timeline ------------------------------------------------------------ */
+
+/* Fixed grid columns: the slider track must never change width, or the thumb
+   jumps whenever the description at the end changes. */
+.cf-timeline {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) minmax(0, 42%);
+  align-items: center;
+  column-gap: 14px;
+  padding: 0 14px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  min-width: 0;
+}
+.cf-live {
+  display: inline-flex;
+}
+.cf-live-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-blocked);
+}
+.cf-live.is-live .cf-live-dot {
+  background: var(--c-done);
+  --st: var(--c-done);
+  animation: cf-pulse 1.6s ease-out infinite;
+}
+.cf-tl-slider {
+  min-width: 0;
+}
+.cf-tl-label {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: center;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.cf-tl-n {
+  font-family: var(--mono);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  min-width: 7ch;
+  text-align: right;
+}
+.cf-tl-text {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- rich text ----------------------------------------------------------- */
+
+/* The frame is the Boxops input frame: 4px radius, subtle border, input
+   ground, and on focus an accent border with a 3px inset tinted ring. The
+   toolbar sits inside it at the top; the text below resizes like a textarea. */
+.cf-rt {
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--cf-background-input, var(--color-background-surface));
+}
+.cf-rt:focus-within {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 3px var(--cf-accent-subtle);
+}
+.cf-rt.is-disabled {
+  background: var(--surface-2);
+}
+.cf-rt-body {
+  position: relative;
+}
+.cf-rt-editor {
+  box-sizing: border-box;
+  min-height: calc(var(--cf-rt-rows, 3) * 20px + 16px);
+  padding: 8px;
+  border: 0;
+  border-radius: 0 0 3px 3px;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 20px;
+  outline: none;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  resize: vertical;
+}
+.cf-rt.is-disabled .cf-rt-editor {
+  color: var(--text-faint);
+  cursor: not-allowed;
+  resize: none;
+}
+.cf-rt-placeholder {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  line-height: 20px;
+  color: var(--text-muted);
+  pointer-events: none;
+  user-select: none;
+  white-space: pre-wrap;
+  overflow: hidden;
+}
+.cf-rt-p,
+.cf-rt-quote,
+.cf-rt-ul,
+.cf-rt-ol,
+.cf-rt-code,
+.cf-rt-h1,
+.cf-rt-h2,
+.cf-rt-h3,
+.cf-rt-h4,
+.cf-rt-h5,
+.cf-rt-h6 {
+  margin: 0 0 0.5em;
+}
+.cf-rt-editor > :last-child {
+  margin-bottom: 0;
+}
+.cf-rt-h1 { font-size: 1.25em; font-weight: 700; }
+.cf-rt-h2 { font-size: 1.15em; font-weight: 700; }
+.cf-rt-h3, .cf-rt-h4, .cf-rt-h5, .cf-rt-h6 { font-size: 1.05em; font-weight: 600; }
+/* Markers are set outright: list-style-type inherits, and an Astryx
+   ancestor turns it off. */
+.cf-rt-ul,
+.cf-rt-ol {
+  padding-left: 1.5em;
+  list-style: disc outside;
+}
+.cf-rt-ol {
+  list-style: decimal outside;
+}
+.cf-rt-li-nested > .cf-rt-ul {
+  list-style: circle outside;
+}
+.cf-rt-li-nested {
+  list-style: none;
+}
+.cf-rt-li-nested > .cf-rt-ul,
+.cf-rt-li-nested > .cf-rt-ol {
+  margin: 0;
+}
+.cf-rt-li-checked,
+.cf-rt-li-unchecked {
+  position: relative;
+  list-style: none;
+  margin-left: -1.5em;
+  padding-left: 1.5em;
+  cursor: pointer;
+}
+.cf-rt-li-checked::before,
+.cf-rt-li-unchecked::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.3em;
+  width: 0.9em;
+  height: 0.9em;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  background: var(--surface);
+}
+.cf-rt-li-checked {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+.cf-rt-li-checked::before {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.cf-rt-quote {
+  padding-left: 10px;
+  border-left: 3px solid var(--border-strong);
+  color: var(--text-muted);
+}
+.cf-rt-code {
+  display: block;
+  padding: 8px 10px;
+  border-radius: var(--radius-inner);
+  background: var(--surface-2);
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  tab-size: 2;
+}
+.cf-rt-icode {
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  font-family: var(--mono);
+  font-size: 0.92em;
+}
+.cf-rt-bold { font-weight: 700; }
+.cf-rt-italic { font-style: italic; }
+.cf-rt-strike { text-decoration: line-through; }
+.cf-rt-underline { text-decoration: underline; }
+.cf-rt-highlight { background: var(--c-ready-bg); }
+.cf-rt-link {
+  color: var(--accent-text);
+  text-decoration: underline;
+  cursor: text;
+}
+/* The toolbar holds the flat Boxops toggles: transparent at rest, a 5% ink
+   wash on hover, accent ink on the accent tint when pressed; hairlines part
+   the text, link and block groups. */
+.cf-rt-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+.cf-rt-group {
+  display: flex;
+  gap: 2px;
+}
+.cf-rt-sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--color-border);
+}
+.cf-rt-toolbar .astryx-toggle-button {
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-element);
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+}
+.cf-rt-toolbar .astryx-toggle-button:enabled:hover {
+  background: var(--color-overlay-hover);
+}
+.cf-rt-toolbar .astryx-toggle-button:enabled:active {
+  background: var(--color-overlay-pressed);
+}
+.cf-rt-toolbar .astryx-toggle-button[data-is-pressed='true'] {
+  background: var(--color-accent-muted);
+  color: var(--accent);
+}
+.cf-rt-toolbar .astryx-toggle-button[data-is-pressed='true']:enabled:hover {
+  background: var(--cf-accent-selected-hover, var(--color-accent-muted));
+}
+.cf-rt-toolbar .astryx-toggle-button:disabled {
+  color: var(--text-faint);
+}
+.cf-rt-glyph {
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 600;
+}
+b.cf-rt-glyph {
+  font-weight: 800;
+}
+.cf-rt-linkform {
+  min-width: 0;
+}
+
+/* The goal form fills its dialog: the fields scroll, the buttons stay put. */
+.cf-goal-form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+/* The dialog's header and footer add their own inner inset to the dialog
+   padding; the content region does not inside a dialog, so give it the same
+   inset to keep the fields flush with the title and the buttons. */
+.cf-goal-form > .astryx-layout-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--layout-padding-inner-y, 16px) var(--layout-padding-inner-x, 16px);
+}
+/* The dialog's two actions as one joined control across its full width. A
+   grid cell stretches the group whatever display Astryx gives it. */
+.cf-goal-actions {
+  display: grid;
+}
+.cf-goal-actions .astryx-button-group {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+}
+/* Only the buttons share the width: a tooltip's hidden nodes also live in
+   the group and must keep their own display. */
+.cf-goal-actions .astryx-button-group > .astryx-button,
+.cf-goal-actions .astryx-button-group > :has(> .astryx-button) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.cf-goal-actions .astryx-button {
+  width: 100%;
+}
+/* No divider between the halves: the primary edge already marks the seam.
+   The :not(#\#) run matches the specificity StyleX gives the group's rule. */
+.cf-goal-actions .astryx-button-group > .astryx-button:not(#\#):not(#\#):not(#\#),
+.cf-goal-actions .astryx-button-group > :has(> .astryx-button) > .astryx-button:not(#\#):not(#\#):not(#\#) {
+  border-inline-start-width: 0;
+  border-inline-end-width: 0;
+}
+
+/* An artefact's versions: a split button (open the chosen one, pick another)
+   over a line of who and when. The halves sit a hairline apart with their
+   inner corners squared, as Boxops joins buttons. */
+.cf-versions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.cf-split {
+  display: inline-flex;
+  gap: 2px;
+}
+/* Both halves carry the plain button class, so they are told apart by order;
+   the menu's hidden popover follows them as a later sibling. */
+.cf-split > .astryx-button:first-child:not(#\#):not(#\#):not(#\#) {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+.cf-split > .astryx-button:nth-child(2):not(#\#):not(#\#):not(#\#) {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+}
+
+/* Zoom controls in the canvas corner, stacked above the minimap. */
+.cf-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 175px;
+}
+
+/* The goal's deliverables: a short list, each row opening its own composer. */
+.cf-dl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Astryx inputs take the same Boxops frame and focus ring as the editor. */
+[data-astryx-theme] :is(.astryx-text-input, .astryx-text-area, .astryx-selector[data-variant='input'], .astryx-multi-selector[data-variant='input'], .astryx-number-input) {
+  border-radius: 4px;
+  border-color: var(--color-border);
+  background-color: var(--cf-background-input, var(--color-background-surface));
+}
+[data-astryx-theme] :is(.astryx-text-input, .astryx-text-area, .astryx-selector[data-variant='input'], .astryx-multi-selector[data-variant='input'], .astryx-number-input):focus-within {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 3px var(--cf-accent-subtle);
+  outline: none;
+}
+
+/* Rendered rich text: Astryx Markdown, tightened for the panel. */
+.cf-rich {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.cf-rich-muted {
+  color: var(--text-muted);
+}
+.cf-question {
+  padding: 8px 12px;
+  border-left: 3px solid var(--c-human);
+  border-radius: 0 var(--radius-inner) var(--radius-inner) 0;
+  background: var(--c-human-bg);
+}
+
+/* ---- small screens ------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .cf-main {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto;
+  }
+  .cf-panel {
+    border-left: none;
+    border-top: 1px solid var(--border);
+    max-height: 45vh;
+  }
+  .cf-splitter {
+    display: none;
+  }
+  .cf-stats {
+    display: none;
+  }
+}
+
+/* ---- workflow frames ----------------------------------------------------- */
+
+.wf-done { --st: var(--c-done); }
+.wf-abandoned { --st: var(--c-abandoned); }
+.wf-active { --st: var(--c-active); }
+.wf-waiting { --st: var(--c-human); }
+.wf-ready { --st: var(--c-ready); }
+.wf-blocked { --st: var(--c-blocked); }
+
+.cf-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  border: 1.5px solid var(--border-strong);
+  box-shadow: var(--shadow);
+  transition: border-color 160ms, box-shadow 160ms, background 160ms;
+}
+.cf-frame.is-focused {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-lift), 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.cf-frame.is-selected:not(.is-focused) {
+  border-color: var(--edge-hot);
+}
+.cf-frame.wf-done {
+  border-color: color-mix(in srgb, var(--c-done) 45%, var(--border-strong));
+}
+.cf-frame.is-collapsed {
+  background: var(--surface);
+}
+.cf-frame-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 56px;
+  padding: 0 12px 0 12px;
+  cursor: grab;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 18px 18px 0 0;
+}
+.cf-frame.is-collapsed .cf-frame-head {
+  border-bottom: none;
+  height: 50px;
+}
+.cf-frame-head:active {
+  cursor: grabbing;
+}
+.cf-grip {
+  color: var(--text-faint);
+  flex: none;
+}
+.cf-frame-title {
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}
+.cf-frame-tools {
+  display: flex;
+  gap: 2px;
+  flex: none;
+  margin-left: 2px;
+}
+.cf-frame-body {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 0 14px 12px 38px;
+  font-size: 12px;
+}
+.cf-frame-body .cf-needs-you {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--c-human);
+  font-weight: 600;
+}
+
+/* Dim everything outside the focused workflow. Opacity only: the wrapper's
+   transform is its position and must never be touched by CSS. */
+.react-flow__node.cf-dim {
+  opacity: 0.28;
+  transition: opacity 200ms;
+}
+.react-flow__node.cf-dim:hover {
+  opacity: 0.7;
+}
+
+/* Deliverable artefacts mark the end of a workflow. */
+.cf-artefact.is-finish {
+  box-shadow: var(--shadow), 0 0 0 2px var(--surface), 0 0 0 3.5px var(--as-ring, var(--border-strong));
+  font-weight: 600;
+}
+
+/* ---- pinned frames: locked in place, not draggable ------------------------ */
+
+.cf-frame.is-pinned .cf-frame-head {
+  cursor: default;
+}
+.cf-frame.is-pinned .cf-grip {
+  color: var(--accent);
+}
+
+/* ---- board --------------------------------------------------------------- */
+
+.tone-blocked { --st: var(--c-blocked); }
+.tone-ready { --st: var(--c-ready); }
+.tone-human { --st: var(--c-human); }
+.tone-active { --st: var(--c-active); }
+.tone-submitted { --st: var(--c-submitted); }
+.tone-done { --st: var(--c-done); }
+
+.cf-board {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  padding: 0 16px 28px;
+}
+.cf-board-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(188px, 1fr));
+  column-gap: 10px;
+  align-items: start;
+  min-width: 1200px;
+}
+.cf-col-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 14px 6px 8px;
+  margin-bottom: 4px;
+  background: var(--canvas);
+  border-bottom: 2px solid var(--st);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.cf-col-n {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--st);
+}
+.cf-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 140px;
+  margin-top: 6px;
+  padding: 6px;
+  border-radius: var(--radius-container);
+  background: color-mix(in srgb, var(--text) 3.5%, transparent);
+}
+.cf-cell.is-empty {
+  background: transparent;
+  border: 1px dashed color-mix(in srgb, var(--text) 10%, transparent);
+}
+/* A card is an Astryx ClickableCard with Coalface's status bar on its left
+   edge and a selection ring; the wrapper draws both. */
+.cf-card {
+  position: relative;
+  border-radius: var(--radius-container);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  animation: cf-enter 320ms ease-out both;
+  transition: box-shadow 160ms;
+}
+.cf-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--st, var(--c-blocked));
+  z-index: 1;
+  pointer-events: none;
+}
+.cf-card:hover {
+  box-shadow: var(--shadow-lift);
+}
+.cf-card.is-selected {
+  box-shadow: var(--shadow-lift), 0 0 0 2px var(--edge-hot);
+}
+.cf-card.st-done {
+  opacity: 0.78;
+}
+.cf-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-left: 4px;
+  text-align: left;
+}
+.cf-card.st-blocked .cf-card-title,
+.cf-card.st-abandoned .cf-card-title {
+  color: var(--text-muted);
+}
+.cf-card.st-abandoned .cf-card-title {
+  text-decoration: line-through;
+}
+.cf-card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 700;
+  color: var(--st, var(--text-muted));
+}
+.cf-card.st-blocked .cf-card-head,
+.cf-card.st-done .cf-card-head,
+.cf-card.st-abandoned .cf-card-head {
+  color: var(--text-muted);
+}
+/* Which workflow the card belongs to; the flag carries the workflow's status colour. */
+.cf-card-wf {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.cf-card-wf svg {
+  flex: none;
+  color: var(--st, var(--text-muted));
+}
+.cf-card-wf-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cf-card-crumbs {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cf-card-title {
+  font-weight: 600;
+  font-size: 12.5px;
+  line-height: 1.3;
+}
+.cf-card-meta {
+  display: flex;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}

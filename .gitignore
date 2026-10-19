@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.coalface/
+.DS_Store
+
+# Built Astryx theme (pnpm --filter @coalface/ui theme:build)
+packages/ui/src/theme/boxops.css
+packages/ui/src/theme/boxops.css.d.ts
+packages/ui/src/theme/boxops.js
+packages/ui/src/theme/boxops.d.ts

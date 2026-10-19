@@ -1,0 +1,122 @@
+// Node-only: the file-backed event store. One JSONL file, append-only.
+// Sequence numbers are line positions, so concurrent appenders never clash.
+
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import type { Ctx, Result } from './commands.js';
+import { DEFAULT_POLICY, mergePolicy, validatePolicy } from './policy.js';
+import { project } from './project.js';
+import type { Actor, Event, Policy, Rung, State } from './types.js';
+
+export const DIR_NAME = '.coalface';
+
+export class Store {
+  readonly eventsPath: string;
+  readonly policyPath: string;
+
+  constructor(readonly dir: string) {
+    this.eventsPath = path.join(dir, 'events.jsonl');
+    this.policyPath = path.join(dir, 'policy.json');
+  }
+
+  /** Walk up from `start` looking for a .coalface dir; default to start/.coalface. */
+  static resolve(start: string = process.cwd()): Store {
+    const explicit = process.env.COALFACE_DIR;
+    if (explicit) return new Store(path.resolve(explicit));
+    let cur = path.resolve(start);
+    for (;;) {
+      const candidate = path.join(cur, DIR_NAME);
+      if (fs.existsSync(candidate)) return new Store(candidate);
+      const parent = path.dirname(cur);
+      if (parent === cur) break;
+      cur = parent;
+    }
+    return new Store(path.join(path.resolve(start), DIR_NAME));
+  }
+
+  exists(): boolean {
+    return fs.existsSync(this.eventsPath);
+  }
+
+  init(): void {
+    fs.mkdirSync(this.dir, { recursive: true });
+    if (!fs.existsSync(this.policyPath)) {
+      fs.writeFileSync(this.policyPath, JSON.stringify(DEFAULT_POLICY, null, 2) + '\n');
+    }
+    if (!fs.existsSync(this.eventsPath)) fs.writeFileSync(this.eventsPath, '');
+  }
+
+  readEvents(): Event[] {
+    if (!fs.existsSync(this.eventsPath)) return [];
+    const text = fs.readFileSync(this.eventsPath, 'utf8');
+    const events: Event[] = [];
+    let seq = 0;
+    for (const line of text.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        events.push({ ...(JSON.parse(trimmed) as Event), seq });
+      } catch {
+        // A torn write; skip the line but keep seq stable for later lines.
+      }
+      seq++;
+    }
+    return events;
+  }
+
+  policy(): Policy {
+    if (!fs.existsSync(this.policyPath)) return DEFAULT_POLICY;
+    const p = mergePolicy(JSON.parse(fs.readFileSync(this.policyPath, 'utf8')) as Policy);
+    const errors = validatePolicy(p);
+    if (errors.length) throw new Error(`invalid policy: ${errors.join('; ')}`);
+    return p;
+  }
+
+  append(events: Event[]): void {
+    if (!events.length) return;
+    if (!this.exists()) this.init();
+    const lines = events.map((e) => JSON.stringify(stripSeq(e))).join('\n') + '\n';
+    fs.appendFileSync(this.eventsPath, lines);
+  }
+
+  state(): State {
+    return project(this.readEvents());
+  }
+
+  ctx(actor: Actor, rung: Rung, onBehalfOf?: Actor): Ctx {
+    return { state: this.state(), policy: this.policy(), actor, rung, onBehalfOf };
+  }
+
+  /** Project, run a command, append its events. Returns the command result. */
+  run<T extends Result>(actor: Actor, rung: Rung, fn: (ctx: Ctx) => T, onBehalfOf?: Actor): T {
+    const result = fn(this.ctx(actor, rung, onBehalfOf));
+    this.append(result.events);
+    return result;
+  }
+
+  /** Poll the log for changes. Returns a stop function. */
+  watch(onChange: () => void, intervalMs = 300): () => void {
+    if (!fs.existsSync(this.eventsPath)) this.init();
+    fs.watchFile(this.eventsPath, { interval: intervalMs }, (cur, prev) => {
+      if (cur.mtimeMs !== prev.mtimeMs || cur.size !== prev.size) onChange();
+    });
+    return () => fs.unwatchFile(this.eventsPath);
+  }
+}
+
+function stripSeq(e: Event): Omit<Event, 'seq'> {
+  const { seq: _seq, ...rest } = e;
+  return rest;
+}
+
+export function humanActor(): Actor {
+  const name = process.env.COALFACE_HUMAN ?? os.userInfo().username;
+  return { id: `human:${name}`, kind: 'human', name };
+}
+
+export function agentActor(label?: string): Actor {
+  const principal = process.env.COALFACE_HUMAN ?? os.userInfo().username;
+  const suffix = label ?? process.env.COALFACE_AGENT ?? Math.random().toString(36).slice(2, 7);
+  return { id: `agent:${suffix}`, kind: 'agent', name: `agent ${suffix}`, principal: `human:${principal}` };
+}
