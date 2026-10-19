@@ -27,6 +27,8 @@ interface Props {
   theme: 'light' | 'dark';
   /** Increment to force a fit and re-enable auto-fit. */
   fitKey: number;
+  /** Scrubbing history: each change jumps into place instead of animating. */
+  replaying: boolean;
   onSelect: (id: string | undefined) => void;
   onToggleGroup: (id: string) => void;
   onToggleFrame: (id: string) => void;
@@ -52,7 +54,7 @@ const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 
 export function Graph({
-  state, collapsedGroups, frames, focus, selected, theme, fitKey,
+  state, collapsedGroups, frames, focus, selected, theme, fitKey, replaying,
   onSelect, onToggleGroup, onToggleFrame, onPinFrame, onMoveFrame, onFocus,
 }: Props) {
   const [nodes, setNodes] = useState<Node[]>([]);
@@ -72,6 +74,11 @@ export function Graph({
   const hasFit = useRef(false);
   const pendingFocusFit = useRef(false);
   const rf = useReactFlow();
+  // A layout animates only when neither it nor the one before was a replay,
+  // so scrubbing, and the jump back to live, never animate.
+  const replayingRef = useRef(replaying);
+  replayingRef.current = replaying;
+  const wasReplaying = useRef(replaying);
   // Focus is read through a ref by the layout callbacks; its key drives the effects.
   const focusRef = useRef(focus);
   focusRef.current = focus;
@@ -100,7 +107,7 @@ export function Graph({
   );
 
   const settle = useCallback(
-    (finals: Node[], to: Map<string, Placed>) => {
+    (finals: Node[], to: Map<string, Placed>, instant: boolean) => {
       nodesRef.current = finals;
       setNodes(finals);
       prev.current = to;
@@ -109,13 +116,13 @@ export function Graph({
       const framed = f.length > 0 && f.every((id) => to.has(frameId(id)));
       if (pendingFocusFit.current && framed) {
         pendingFocusFit.current = false;
-        window.setTimeout(() => fitFocus(f), 30);
+        window.setTimeout(() => fitFocus(f, instant), 30);
       } else if (autoFit.current && to.size) {
-        const first = !hasFit.current;
+        const jump = instant || !hasFit.current;
         hasFit.current = true;
         window.setTimeout(() => {
-          if (framed) fitFocus(f, first);
-          else rf.fitView(first ? { ...FIT, duration: 0 } : FIT);
+          if (framed) fitFocus(f, jump);
+          else rf.fitView(jump ? { ...FIT, duration: 0 } : FIT);
         }, 30);
       }
     },
@@ -127,7 +134,9 @@ export function Graph({
       cancelAnimationFrame(raf.current);
       const from = prev.current;
       const to = new Map(placed.map((p) => [p.id, p]));
-      const animate = from.size > 0;
+      const instant = replayingRef.current || wasReplaying.current;
+      wasReplaying.current = replayingRef.current;
+      const animate = from.size > 0 && !instant;
       const finals = placed.map((p) => toNode(p, built, animate && !from.has(p.id)));
       setEdges(built.edges);
       // Only nodes that actually move get fresh objects during the transition;
@@ -137,7 +146,7 @@ export function Graph({
         return a && a.parentId === p.parentId && (a.x !== p.x || a.y !== p.y);
       });
       if (!animate || movers.length === 0) {
-        settle(finals, to);
+        settle(finals, to, instant);
         return;
       }
       target.current = { to, nodes: finals };
@@ -145,7 +154,7 @@ export function Graph({
       const step = (now: number) => {
         const k = ease(Math.min(1, (now - start) / DURATION));
         if (k >= 1) {
-          settle(finals, to);
+          settle(finals, to, false);
           return;
         }
         const moved = new Map(
@@ -235,6 +244,7 @@ export function Graph({
   return (
     <GraphContext.Provider value={ctx}>
       <ReactFlow
+        className={replaying ? 'is-replaying' : undefined}
         nodes={nodes}
         edges={styledEdges}
         nodeTypes={nodeTypes}

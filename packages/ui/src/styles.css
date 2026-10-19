@@ -37,8 +37,7 @@
   --c-artefact: var(--color-icon-secondary);
   --c-ready-bg: var(--color-background-orange);
   --c-human-bg: var(--color-background-pink);
-  --group-bg: color-mix(in srgb, var(--color-icon-teal) 5%, transparent);
-  --group-border: color-mix(in srgb, var(--color-icon-teal) 40%, transparent);
+  --group-border: var(--color-icon-teal);
 }
 
 /* ---- base ---------------------------------------------------------------- */
@@ -120,15 +119,19 @@ body {
 
 /* ---- layout -------------------------------------------------------------- */
 
+/* The column is minmax(0, 1fr) so no row's content can widen the page: the
+   timeline's percentage column would otherwise size to its full text. */
 .lr-app {
   display: grid;
-  grid-template-rows: 52px 1fr 44px;
+  grid-template-rows: auto 1fr 44px;
+  grid-template-columns: minmax(0, 1fr);
   height: 100%;
 }
 .lr-top {
   display: flex;
   align-items: center;
   gap: 18px;
+  min-height: 52px;
   padding: 0 14px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -137,7 +140,7 @@ body {
   display: flex;
   align-items: center;
   gap: 9px;
-  min-width: 0;
+  flex: none;
 }
 .lr-brand-name {
   font-weight: 700;
@@ -207,6 +210,8 @@ body {
 .lr-stats {
   display: flex;
   gap: 4px;
+  min-width: 0;
+  overflow: hidden;
   margin-left: auto;
   margin-right: auto;
 }
@@ -237,6 +242,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: none;
 }
 .lr-conn {
   display: flex;
@@ -275,6 +281,15 @@ body {
 .react-flow__node {
   cursor: pointer;
 }
+/* React Flow gives its 'group' type a grey fill, border, padding and shadows
+   of its own; the frame is drawn entirely by .lr-group. */
+.react-flow__node-group {
+  --xy-node-group-background-color: transparent;
+  --xy-node-border: none;
+  --xy-node-boxshadow-hover: none;
+  --xy-node-boxshadow-selected: none;
+  padding: 0;
+}
 .lr-handle {
   width: 6px;
   height: 6px;
@@ -286,6 +301,10 @@ body {
 }
 .lr-enter {
   animation: lr-enter 420ms ease-out both;
+}
+/* Scrubbing history jumps between states: no fades or recolouring. */
+.react-flow.is-replaying .react-flow__node * {
+  transition: none;
 }
 @keyframes lr-enter {
   from { opacity: 0; transform: translateY(6px) scale(0.98); }
@@ -346,9 +365,6 @@ body {
 }
 .lr-action.st-done {
   opacity: 0.78;
-}
-.lr-action.is-collapsed {
-  box-shadow: var(--shadow), 3px 3px 0 -1px var(--surface), 3px 3px 0 0 var(--border);
 }
 .lr-action-head {
   display: flex;
@@ -448,13 +464,11 @@ body {
   width: 100%;
   height: 100%;
   border-radius: 14px;
-  background: var(--group-bg);
-  border: 1.5px solid var(--group-border);
+  border: 2px dashed var(--group-border);
   transition: border-color 160ms, box-shadow 160ms;
 }
 .lr-group.st-done {
-  --group-border: color-mix(in srgb, var(--c-done) 45%, transparent);
-  --group-bg: color-mix(in srgb, var(--c-done) 5%, transparent);
+  --group-border: var(--c-done);
 }
 .lr-group.is-selected {
   border-style: solid;
@@ -1069,6 +1083,36 @@ b.lr-rt-glyph {
 
 /* ---- small screens ------------------------------------------------------- */
 
+/* The top bar gives way in steps: the stats lose their labels (shown on
+   hover), then the wordmark and connection text go, then the stats, and on
+   a phone the bar wraps onto a second line rather than scrolling. */
+@media (max-width: 1280px) {
+  .lr-stat-label {
+    display: none;
+  }
+}
+@media (max-width: 1100px) {
+  .lr-brand-name,
+  .lr-conn-text {
+    display: none;
+  }
+}
+@media (max-width: 960px) {
+  .lr-top,
+  .lr-brand,
+  .lr-tools {
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    row-gap: 6px;
+    min-width: 0;
+  }
+  .lr-top {
+    padding-block: 10px;
+  }
+  .lr-stats {
+    display: none;
+  }
+}
 @media (max-width: 900px) {
   .lr-main {
     grid-template-columns: 1fr;
@@ -1080,9 +1124,6 @@ b.lr-rt-glyph {
     max-height: 45vh;
   }
   .lr-splitter {
-    display: none;
-  }
-  .lr-stats {
     display: none;
   }
 }

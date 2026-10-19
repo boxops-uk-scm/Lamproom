@@ -715,6 +715,7 @@ function Workspace({
               selected={selected}
               theme={theme}
               fitKey={fitKey}
+              replaying={!live}
               onSelect={setSelected}
               onToggleGroup={toggleGroup}
               onToggleFrame={toggleFrame}
@@ -809,7 +810,7 @@ const UNDO: Record<string, { did: string; command: string }> = {
 
 function Stat({ label, value, tone, title }: { label: string; value: number | string; tone: string; title?: string }) {
   return (
-    <Hint content={title} placement="below">
+    <Hint content={title ?? label} placement="below">
       <div className={cx('lr-stat', `tone-${tone}`)}>
         <span className="lr-stat-value">{value}</span>
         <span className="lr-stat-label">{label}</span>
