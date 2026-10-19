@@ -68,6 +68,30 @@ lamproom review <artefactId> accept
 lamproom review <artefactId> reject "no tests"
 ```
 
+You do not have to run the skill for chat work to show up. With the plugin
+loaded, every turn of an ordinary session is checked when it ends, by the
+Stop hook. The session waits for it, so turns never overlap: a few
+milliseconds for most turns, a few seconds for the classifier, and about ten
+more when a turn is recorded.
+
+1. Free rules: a turn that already reported through the Lamproom tools, or
+   that edited no files and made no commits, pushes or pull-request changes,
+   stops here.
+2. A Haiku classifier (`packages/plugin/prompts/classify.md`) makes a typed
+   track-or-skip call with a confidence.
+3. A Haiku tracker (`prompts/track.md`), given only the reporting tools,
+   matches the turn to an action and claims it, notes progress, attaches
+   commits and pull requests, completes it when its criteria are met, or
+   proposes a goal you stated in chat. It never evaluates, decomposes,
+   answers or reviews.
+
+What it recorded is shown to you when the turn ends, and reaches the main
+session as context on your next prompt. Each session's turn records and
+`tracker.log` live in the plugin data directory
+(`~/.claude/plugins/data/<plugin>/sessions/<session>`). A tracked turn costs
+about a third of a cent. `LAMPROOM_AUTOTRACK=0` turns it off, and
+`LAMPROOM_TRACKER_MODEL` picks another model.
+
 To see the UI with data and no agent, seed the demo seam (a goal and its tree of actions) into a project:
 
 ```bash

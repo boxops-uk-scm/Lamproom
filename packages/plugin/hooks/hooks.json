@@ -1,5 +1,5 @@
 {
-  "description": "Injects the current coal face into context at session start.",
+  "description": "Injects the current coal face at session start, and records ordinary chat work in Lamproom after each turn.",
   "hooks": {
     "SessionStart": [
       {
@@ -8,8 +8,53 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/dist/session-start.js"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/session-start.js"
+            ],
             "timeout": 15
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/turn.js"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|mcp__.*lamproom.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/turn.js"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/dist/stop.js"
+            ],
+            "timeout": 300
           }
         ]
       }

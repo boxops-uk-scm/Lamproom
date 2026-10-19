@@ -23,8 +23,8 @@ try {
   const status = await client.status(p.id);
   context =
     `Lamproom is tracking ${p.owner}/${p.name} (${serverUrl}).\n\n${status}\n\n` +
-    'To continue working the coal face, invoke the /lamproom:mine skill. ' +
-    'Report every state change on a seam through the Lamproom tools.';
+    'To continue working the coal face, invoke the /lamproom:mine skill, and report every state change on a seam through the Lamproom tools. ' +
+    'Outside that skill, work you do in this chat is recorded in Lamproom automatically after each turn, so you need not report it yourself.';
 } catch (e) {
   const why = e instanceof ClientError ? e.message : e instanceof Error ? e.message : String(e);
   context =
