@@ -5,6 +5,6 @@ export * from './project.js';
 export * from './commands.js';
 export * from './render.js';
 export * from './richtext.js';
-export * from './workflows.js';
+export * from './seams.js';
 export * from './fragment.js';
 export * from './upcast.js';

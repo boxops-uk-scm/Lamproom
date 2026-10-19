@@ -2,13 +2,13 @@ import { build } from 'esbuild';
 
 await build({
   entryPoints: ['src/index.ts'],
-  outfile: 'dist/coalface.js',
+  outfile: 'dist/lamproom.js',
   bundle: true,
   platform: 'node',
   target: 'node20',
   format: 'esm',
   logLevel: 'info',
-  // Postgres driver is optional and loaded at run time only when COALFACE_DATABASE_URL is set.
+  // Postgres driver is optional and loaded at run time only when LAMPROOM_DATABASE_URL is set.
   external: ['pg'],
   banner: {
     js: "import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);",

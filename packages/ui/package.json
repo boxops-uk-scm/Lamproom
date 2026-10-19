@@ -1,9 +1,9 @@
 {
-  "name": "@coalface/ui",
+  "name": "@lamproom/ui",
   "version": "0.1.0",
   "type": "module",
   "private": true,
-  "description": "Live hypergraph view of a coalface workflow",
+  "description": "Lamproom UI: live hypergraph and board of every seam in a project",
   "scripts": {
     "dev": "pnpm theme:build && vite",
     "build": "pnpm theme:build && vite build",
@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@astryxdesign/core": "0.7.1",
-    "@coalface/core": "workspace:*",
+    "@lamproom/core": "workspace:*",
     "@lexical/code": "0.52.0",
     "@lexical/link": "0.52.0",
     "@lexical/list": "0.52.0",

@@ -10,7 +10,7 @@ import { project } from './project.js';
 import { upcast } from './upcast.js';
 import type { Actor, Event, Policy, Rung, State } from './types.js';
 
-export const DIR_NAME = '.coalface';
+export const DIR_NAME = '.lamproom';
 
 export class Store {
   readonly eventsPath: string;
@@ -21,9 +21,9 @@ export class Store {
     this.policyPath = path.join(dir, 'policy.json');
   }
 
-  /** Walk up from `start` looking for a .coalface dir; default to start/.coalface. */
+  /** Walk up from `start` looking for a .lamproom dir; default to start/.lamproom. */
   static resolve(start: string = process.cwd()): Store {
-    const explicit = process.env.COALFACE_DIR;
+    const explicit = process.env.LAMPROOM_DIR;
     if (explicit) return new Store(path.resolve(explicit));
     let cur = path.resolve(start);
     for (;;) {
@@ -118,12 +118,12 @@ function stripSeq(e: Event): Omit<Event, 'seq' | 'stream' | 'rev'> {
 }
 
 export function humanActor(): Actor {
-  const name = process.env.COALFACE_HUMAN ?? os.userInfo().username;
+  const name = process.env.LAMPROOM_HUMAN ?? os.userInfo().username;
   return { id: `human:${name}`, kind: 'human', name };
 }
 
 export function agentActor(label?: string): Actor {
-  const principal = process.env.COALFACE_HUMAN ?? os.userInfo().username;
-  const suffix = label ?? process.env.COALFACE_AGENT ?? Math.random().toString(36).slice(2, 7);
+  const principal = process.env.LAMPROOM_HUMAN ?? os.userInfo().username;
+  const suffix = label ?? process.env.LAMPROOM_AGENT ?? Math.random().toString(36).slice(2, 7);
   return { id: `agent:${suffix}`, kind: 'agent', name: `agent ${suffix}`, principal: `human:${principal}` };
 }

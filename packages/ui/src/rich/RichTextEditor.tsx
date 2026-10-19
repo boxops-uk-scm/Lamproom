@@ -6,7 +6,7 @@
 // form wants it.
 
 import { Field } from '@astryxdesign/core/Field';
-import type { RichText } from '@coalface/core';
+import type { RichText } from '@lamproom/core';
 import { CodeHighlightNode, CodeNode } from '@lexical/code';
 import { AutoLinkNode, LinkNode } from '@lexical/link';
 import { ListItemNode, ListNode } from '@lexical/list';
@@ -30,27 +30,27 @@ import { cx } from '../graph/nodes';
 import { Toolbar } from './Toolbar';
 
 const THEME = {
-  paragraph: 'cf-rt-p',
-  heading: { h1: 'cf-rt-h1', h2: 'cf-rt-h2', h3: 'cf-rt-h3', h4: 'cf-rt-h4', h5: 'cf-rt-h5', h6: 'cf-rt-h6' },
-  quote: 'cf-rt-quote',
+  paragraph: 'lr-rt-p',
+  heading: { h1: 'lr-rt-h1', h2: 'lr-rt-h2', h3: 'lr-rt-h3', h4: 'lr-rt-h4', h5: 'lr-rt-h5', h6: 'lr-rt-h6' },
+  quote: 'lr-rt-quote',
   list: {
-    ul: 'cf-rt-ul',
-    ol: 'cf-rt-ol',
-    listitem: 'cf-rt-li',
-    nested: { listitem: 'cf-rt-li-nested' },
-    listitemChecked: 'cf-rt-li-checked',
-    listitemUnchecked: 'cf-rt-li-unchecked',
-    checklist: 'cf-rt-checklist',
+    ul: 'lr-rt-ul',
+    ol: 'lr-rt-ol',
+    listitem: 'lr-rt-li',
+    nested: { listitem: 'lr-rt-li-nested' },
+    listitemChecked: 'lr-rt-li-checked',
+    listitemUnchecked: 'lr-rt-li-unchecked',
+    checklist: 'lr-rt-checklist',
   },
-  code: 'cf-rt-code',
-  link: 'cf-rt-link',
+  code: 'lr-rt-code',
+  link: 'lr-rt-link',
   text: {
-    bold: 'cf-rt-bold',
-    italic: 'cf-rt-italic',
-    strikethrough: 'cf-rt-strike',
-    code: 'cf-rt-icode',
-    underline: 'cf-rt-underline',
-    highlight: 'cf-rt-highlight',
+    bold: 'lr-rt-bold',
+    italic: 'lr-rt-italic',
+    strikethrough: 'lr-rt-strike',
+    code: 'lr-rt-icode',
+    underline: 'lr-rt-underline',
+    highlight: 'lr-rt-highlight',
   },
 };
 
@@ -79,13 +79,13 @@ function MarkdownSync({ value, onChange }: { value: RichText; onChange: (md: Ric
         $convertFromMarkdownString(value, TRANSFORMERS);
         if ($getRoot().isEmpty()) $getRoot().append($createParagraphNode());
       },
-      { tag: 'cf-external' },
+      { tag: 'lr-external' },
     );
   }, [editor, value]);
   useEffect(
     () =>
       editor.registerUpdateListener(({ editorState, dirtyElements, dirtyLeaves, tags }) => {
-        if (tags.has('cf-external') || (dirtyElements.size === 0 && dirtyLeaves.size === 0)) return;
+        if (tags.has('lr-external') || (dirtyElements.size === 0 && dirtyLeaves.size === 0)) return;
         const md = editorState.read(() => $convertToMarkdownString(TRANSFORMERS));
         if (md === last.current) return;
         last.current = md;
@@ -156,7 +156,7 @@ export function RichTextEditor({
   const id = useId();
   const initial = useRef(value);
   const initialConfig: InitialConfigType = {
-    namespace: 'coalface',
+    namespace: 'lamproom',
     theme: THEME,
     nodes: NODES,
     editable: !isDisabled,
@@ -177,17 +177,17 @@ export function RichTextEditor({
       isDisabled={isDisabled}
       width={width}
     >
-      <div className={cx('cf-rt', isDisabled && 'is-disabled')} style={{ '--cf-rt-rows': rows } as CSSProperties}>
+      <div className={cx('lr-rt', isDisabled && 'is-disabled')} style={{ '--lr-rt-rows': rows } as CSSProperties}>
         <LexicalComposer initialConfig={initialConfig}>
           <Toolbar isDisabled={isDisabled} />
-          <div className="cf-rt-body">
+          <div className="lr-rt-body">
             <RichTextPlugin
               contentEditable={
                 <ContentEditable
                   id={id}
-                  className="cf-rt-editor"
+                  className="lr-rt-editor"
                   aria-placeholder={placeholder ?? ''}
-                  placeholder={<div className="cf-rt-placeholder">{placeholder ?? ''}</div>}
+                  placeholder={<div className="lr-rt-placeholder">{placeholder ?? ''}</div>}
                 />
               }
               ErrorBoundary={LexicalErrorBoundary}

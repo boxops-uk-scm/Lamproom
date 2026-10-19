@@ -42,10 +42,10 @@ export function renderStatus(s: State, me?: Actor): string {
   const total = Object.values(s.actions).length;
   const out: string[] = [];
   out.push(
-    `Coalface: ${total} actions (${sum.actions.done} done, ${sum.actions.active} active, ${sum.agentFace} ready for agents, ${sum.humanQueue} waiting on humans, ${sum.actions.blocked} blocked, ${sum.undecomposedLarge} large or unsized still undecomposed).`,
+    `Lamproom: ${total} actions (${sum.actions.done} done, ${sum.actions.active} active, ${sum.agentFace} ready for agents, ${sum.humanQueue} waiting on humans, ${sum.actions.blocked} blocked, ${sum.undecomposedLarge} large or unsized still undecomposed).`,
   );
   if (total === 0) {
-    out.push('The workflow is empty. Propose a top-level action for the goal with a concrete output artefact.');
+    out.push('The seam is empty. Propose a top-level action for the goal with a concrete output artefact.');
     return out.join('\n');
   }
   if (me) {

@@ -1,4 +1,4 @@
-import { inlineText, type Event, type State } from '@coalface/core';
+import { inlineText, type Event, type State } from '@lamproom/core';
 
 function who(e: Event): string {
   const name = (a: Event['actor']) => (a.kind === 'human' ? a.name ?? a.id : a.id);

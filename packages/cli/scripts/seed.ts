@@ -1,13 +1,13 @@
-// Seeds a demo workflow so the UI can be exercised without an agent. Writes
+// Seeds a demo seam so the UI can be exercised without an agent. Writes
 // a file log, then imports it into a project on the server when one is
 // named. Acts as two agents and one human, with realistic timestamps.
 //
-//   pnpm --filter @coalface/cli seed --dir <where to write .coalface/events.jsonl>
-//   pnpm --filter @coalface/cli seed --project owner/name [--server url]   (also imports)
+//   pnpm --filter @lamproom/cli seed --dir <where to write .lamproom/events.jsonl>
+//   pnpm --filter @lamproom/cli seed --project owner/name [--server url]   (also imports)
 
-import * as core from '@coalface/core';
-import { Store } from '@coalface/core/node';
-import { Client, parseRepo, resolveServer, tokenFor } from '@coalface/client';
+import * as core from '@lamproom/core';
+import { Store } from '@lamproom/core/node';
+import { Client, parseRepo, resolveServer, tokenFor } from '@lamproom/client';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,7 +16,7 @@ const arg = (name: string) => {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 ? process.argv[i + 1] : undefined;
 };
-const store = new Store(path.join(arg('dir') ?? fs.mkdtempSync(path.join(os.tmpdir(), 'coalface-seed-')), '.coalface'));
+const store = new Store(path.join(arg('dir') ?? fs.mkdtempSync(path.join(os.tmpdir(), 'lamproom-seed-')), '.lamproom'));
 store.init();
 
 const human: core.Actor = { id: 'human:tom', kind: 'human', name: 'tom' };

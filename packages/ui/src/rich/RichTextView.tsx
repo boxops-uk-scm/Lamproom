@@ -2,7 +2,7 @@
 // descriptions, questions and rationale; inline for list items and log notes.
 
 import { Markdown } from '@astryxdesign/core/Markdown';
-import type { RichText } from '@coalface/core';
+import type { RichText } from '@lamproom/core';
 import { cx } from '../graph/nodes';
 
 /** Links leave the app in a new tab rather than navigating the tracker away. */
@@ -22,7 +22,7 @@ export function RichTextView({ value, inline = false, className }: { value: Rich
     );
   }
   return (
-    <div className={cx('cf-rich', className)}>
+    <div className={cx('lr-rich', className)}>
       <Markdown density="compact" headingLevelStart={4} contentWidth="100%" autolink="gfm" onLinkClick={openLink}>
         {value}
       </Markdown>

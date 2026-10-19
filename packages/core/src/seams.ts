@@ -1,20 +1,22 @@
-// Workflows are the connected components of the hypergraph. Each is named
+// Seams are the connected components of the hypergraph: one goal and
+// everything connected to it, the thing agents work along (what other trackers
+// call a workflow; the coal face is the working end of a seam). Each is named
 // after its top-level action (the goal). Connectivity, not parentage, is the
 // boundary: a goal's review action is a top-level sibling that only touches
 // the goal through its deliverable, and it belongs inside the frame.
 //
-// A workflow is the logical unit and the storage unit (one event stream per
-// workflow); the composable unit is the fragment (see fragment.ts), an open
-// hypergraph with a boundary. Commands refuse edges between workflows, so a
-// workflow only ever grows by composing fragments into it: decompositions
+// A seam is the logical unit and the storage unit (one event stream per
+// seam); the composable unit is the fragment (see fragment.ts), an open
+// hypergraph with a boundary. Commands refuse edges between seams, so a
+// seam only ever grows by composing fragments into it: decompositions
 // under an action, policy expansions, and follow-up actions that take its
 // delivered artefacts as inputs after it has finished.
 
 import type { ActionState, Event, State } from './types.js';
 
-export type WorkflowStatus = 'done' | 'abandoned' | 'active' | 'waiting' | 'ready' | 'blocked';
+export type SeamStatus = 'done' | 'abandoned' | 'active' | 'waiting' | 'ready' | 'blocked';
 
-export interface Workflow {
+export interface Seam {
   /** Goal action id, or the first member's id for a goal-less component. */
   id: string;
   title: string;
@@ -26,15 +28,15 @@ export interface Workflow {
   artefacts: string[];
   /** Terminal artefacts the goal delivers: the end of each output's closedTo chain. */
   deliverables: string[];
-  status: WorkflowStatus;
+  status: SeamStatus;
   done: number;
   total: number;
   humanQueue: number;
 }
 
-export interface Workflows {
-  list: Workflow[];
-  /** Entity id (action or artefact) -> workflow id. */
+export interface Seams {
+  list: Seam[];
+  /** Entity id (action or artefact) -> seam id. */
   of: Map<string, string>;
 }
 
@@ -74,7 +76,7 @@ export function terminalOf(s: State, id: string): string {
   return cur;
 }
 
-export function workflows(s: State): Workflows {
+export function seams(s: State): Seams {
   const uf = new UnionFind();
   for (const id of s.order) uf.add(id);
   for (const t of Object.values(s.actions)) {
@@ -95,7 +97,7 @@ export function workflows(s: State): Workflows {
     else members.set(root, [id]);
   }
 
-  const list: Workflow[] = [];
+  const list: Seam[] = [];
   const of = new Map<string, string>();
   for (const ids of members.values()) {
     const actions = ids.filter((id) => s.actions[id]);
@@ -116,12 +118,12 @@ export function workflows(s: State): Workflows {
     const humanQueue = live.filter(
       (t) => (t.status === 'ready' || t.status === 'rework') && t.requires?.actorKind === 'human',
     ).length;
-    // Follow-ups extend a workflow past its goal: top-level, not from policy,
-    // and taking inputs (the goal takes none). The workflow is finished only
+    // Follow-ups extend a seam past its goal: top-level, not from policy,
+    // and taking inputs (the goal takes none). The seam is finished only
     // when the goal and every live follow-up are.
     const followUps = topLevel.filter((t) => t !== goal && !t.expandedFrom && t.inputs.length > 0);
     const liveTop = topLevel.filter((t) => t.status !== 'abandoned');
-    let status: WorkflowStatus;
+    let status: SeamStatus;
     if (!goal) status = 'blocked';
     else if (goal.status === 'done' && liveTop.every((t) => t.status === 'done')) status = 'done';
     else if (goal.status === 'abandoned') status = 'abandoned';
@@ -130,7 +132,7 @@ export function workflows(s: State): Workflows {
     else if (live.some((t) => (t.status === 'ready' || t.status === 'rework') && t.requires?.actorKind !== 'human')) status = 'ready';
     else status = 'blocked';
     const deliverers = goal ? [goal, ...followUps] : [];
-    const wf: Workflow = {
+    const seam: Seam = {
       id,
       title,
       seq,
@@ -144,7 +146,7 @@ export function workflows(s: State): Workflows {
       total: live.length,
       humanQueue,
     };
-    list.push(wf);
+    list.push(seam);
     for (const m of ids) of.set(m, id);
   }
   list.sort((a, b) => a.seq - b.seq);
@@ -152,13 +154,13 @@ export function workflows(s: State): Workflows {
 }
 
 /**
- * The one workflow the given entities belong to, or undefined when none of
- * them exists yet. Throws when they span workflows: that would be an edge
- * between workflows, which the model forbids (each workflow is its own
+ * The one seam the given entities belong to, or undefined when none of
+ * them exists yet. Throws when they span seams: that would be an edge
+ * between seams, which the model forbids (each seam is its own
  * stream, and the union of stream projections must equal the projection of
  * the union).
  */
-export function streamOf(s: State, ids: string[], of: Map<string, string> = workflows(s).of): string | undefined {
+export function streamOf(s: State, ids: string[], of: Map<string, string> = seams(s).of): string | undefined {
   const found = new Set<string>();
   for (const id of ids) {
     const w = of.get(id);
@@ -166,7 +168,7 @@ export function streamOf(s: State, ids: string[], of: Map<string, string> = work
   }
   if (found.size > 1) {
     const names = [...found].map((w) => `"${s.actions[w]?.title ?? s.artefacts[w]?.title ?? w}"`);
-    throw new Error(`these belong to different workflows (${names.join(', ')}); an action cannot join workflows`);
+    throw new Error(`these belong to different seams (${names.join(', ')}); an action cannot join seams`);
   }
   return [...found][0];
 }

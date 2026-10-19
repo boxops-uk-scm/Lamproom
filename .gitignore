@@ -1,10 +1,10 @@
 node_modules/
 dist/
 *.tsbuildinfo
-.coalface/
+.lamproom/
 .DS_Store
 
-# Built Astryx theme (pnpm --filter @coalface/ui theme:build)
+# Built Astryx theme (pnpm --filter @lamproom/ui theme:build)
 packages/ui/src/theme/boxops.css
 packages/ui/src/theme/boxops.css.d.ts
 packages/ui/src/theme/boxops.js

@@ -1,8 +1,8 @@
 {
-  "name": "coalface",
-  "displayName": "Coalface",
+  "name": "lamproom",
+  "displayName": "Lamproom",
   "version": "0.1.0",
   "description": "Tracks agentic development as a hypergraph of artefacts and actions, mined progressively from the coal face.",
   "author": { "name": "Tom Bates" },
-  "keywords": ["workflow", "tracking", "hypergraph", "agents"]
+  "keywords": ["workflow", "seam", "tracking", "hypergraph", "agents"]
 }

@@ -51,7 +51,7 @@ export function extend(s: State, events: Event[]): State {
 
 /**
  * The state of several independent streams together. Streams share no
- * entities (no cross-workflow edges), so the union of their projections is
+ * entities (no cross-seam edges), so the union of their projections is
  * the projection of their union.
  */
 export function unionState(states: State[]): State {

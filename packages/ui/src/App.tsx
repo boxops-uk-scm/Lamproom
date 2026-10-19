@@ -1,5 +1,5 @@
 import { ReactFlowProvider } from '@xyflow/react';
-import { KNOWN_KINDS, emptyState, eventEntityId, extend, isBlank, project, richTextItems, summarise, unionState, workflows, type Event, type State, type Workflow } from '@coalface/core';
+import { KNOWN_KINDS, emptyState, eventEntityId, extend, isBlank, project, richTextItems, summarise, unionState, seams, type Event, type State, type Seam } from '@lamproom/core';
 import { Button } from '@astryxdesign/core/Button';
 import { ButtonGroup } from '@astryxdesign/core/ButtonGroup';
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
@@ -45,7 +45,7 @@ type View = 'graph' | 'board';
 function useTheme(): [ThemePref, 'light' | 'dark', (t: ThemePref) => void] {
   const [pref, setPref] = useState<ThemePref>(() => {
     try {
-      return (localStorage.getItem('cf-theme') as ThemePref) || 'auto';
+      return (localStorage.getItem('lr-theme') as ThemePref) || 'auto';
     } catch {
       return 'auto';
     }
@@ -61,7 +61,7 @@ function useTheme(): [ThemePref, 'light' | 'dark', (t: ThemePref) => void] {
   }, []);
   useEffect(() => {
     try {
-      localStorage.setItem('cf-theme', pref);
+      localStorage.setItem('lr-theme', pref);
     } catch {
       // ignore
     }
@@ -155,7 +155,7 @@ function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'da
 
 function Loading() {
   return (
-    <div className="cf-gate">
+    <div className="lr-gate">
       <Spinner label="Loading" />
     </div>
   );
@@ -163,12 +163,12 @@ function Loading() {
 
 function SignIn() {
   return (
-    <div className="cf-gate">
-      <div className="cf-gate-card">
-        <span className="cf-logo cf-logo-lg" aria-hidden="true" />
-        <Heading level={1}>Coalface</Heading>
+    <div className="lr-gate">
+      <div className="lr-gate-card">
+        <span className="lr-logo lr-logo-lg" aria-hidden="true" />
+        <Heading level={1}>Lamproom</Heading>
         <Text as="p" color="secondary">
-          Workflows for agentic development. Sign in with the GitHub account that can see your repositories.
+          Every seam your agents work, as a live hypergraph. Sign in with the GitHub account that can see your repositories.
         </Text>
         <Button label="Sign in with GitHub" variant="primary" icon={<Icon name="github" size={16} />} onClick={() => window.location.assign(signInUrl)} />
       </div>
@@ -180,20 +180,20 @@ function SignIn() {
 function Projects({ projects, me, onPick, onAdd }: { projects: Project[]; me: Me; onPick: (p: Project) => void; onAdd: () => void }) {
   const add = <Button label="Add project" variant="primary" size="sm" icon={<Icon name="plus" size={14} />} onClick={onAdd} />;
   return (
-    <div className="cf-app">
-      <header className="cf-top">
-        <div className="cf-brand">
-          <span className="cf-logo" aria-hidden="true" />
-          <span className="cf-brand-name">Coalface</span>
+    <div className="lr-app">
+      <header className="lr-top">
+        <div className="lr-brand">
+          <span className="lr-logo" aria-hidden="true" />
+          <span className="lr-brand-name">Lamproom</span>
         </div>
-        <div className="cf-stats" />
-        <div className="cf-tools">
+        <div className="lr-stats" />
+        <div className="lr-tools">
           <UserMenu me={me} />
         </div>
       </header>
-      <main className="cf-gate cf-gate-main">
+      <main className="lr-gate lr-gate-main">
         {projects.length ? (
-          <div className="cf-projects">
+          <div className="lr-projects">
             <Text type="label">Projects</Text>
             <List hasDividers>
               {projects.map((p) => (
@@ -237,13 +237,13 @@ function AddProjectDialog({ isOpen, onClose, onAdded }: { isOpen: boolean; onClo
   };
   return (
     <Dialog isOpen={isOpen} onOpenChange={(o) => !o && onClose()} purpose="form" width={440}>
-      <DialogHeader title="Add project" subtitle="A GitHub repository you can see. Its workflows live here; agents in a checkout of it report to this project." />
-      <form onSubmit={submit} className="cf-goal-form">
+      <DialogHeader title="Add project" subtitle="A GitHub repository you can see. Its seams live here; agents in a checkout of it report to this project." />
+      <form onSubmit={submit} className="lr-goal-form">
         <LayoutContent>
           <TextInput label="Repository" description="owner/name, or its GitHub address" value={repo} onChange={setRepo} hasAutoFocus isRequired width="100%" />
         </LayoutContent>
         <LayoutFooter>
-          <div className="cf-goal-actions">
+          <div className="lr-goal-actions">
             <ButtonGroup label="Project">
               <Button label="Cancel" variant="secondary" onClick={onClose} isDisabled={busy} />
               <Button label="Add project" variant="primary" type="submit" isDisabled={!m} isLoading={busy} />
@@ -266,7 +266,7 @@ function UserMenu({ me }: { me: Me }) {
         ]),
   ];
   return (
-    <span className="cf-user">
+    <span className="lr-user">
       {me.mode === 'dev' && <Token label="dev" size="sm" color="orange" />}
       <DropdownMenu
         items={items}
@@ -297,18 +297,18 @@ function Workspace({
   theme: 'light' | 'dark';
   setPref: (t: ThemePref) => void;
 }) {
-  // One projected state per workflow stream, kept current by the live feed.
+  // One projected state per seam stream, kept current by the live feed.
   const [streams, setStreams] = useState<Streams>({});
   const [head, setHead] = useState<number | null>(null);
   const [lastLive, setLastLive] = useState<Event>();
   const [connected, setConnected] = useState(false);
-  // Events per stream, fetched when a workflow is focused, for scrubbing.
+  // Events per stream, fetched when a seam is focused, for scrubbing.
   const cache = useRef<Record<string, Event[]>>({});
   const pending = useRef<Record<string, Event[]>>({});
   const [cacheVersion, bumpCache] = useReducer((x: number) => x + 1, 0);
   const [cursor, setCursor] = useState<number | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
-  const framesKey = `cf:frames:${proj.id}`;
+  const framesKey = `lr:frames:${proj.id}`;
   const [frames, setFrames] = useState<Frames>(() => loadFrames(framesKey));
   const [focus, setFocusState] = useState<string[]>([]);
   const [selected, setSelected] = useState<string>();
@@ -316,7 +316,7 @@ function Workspace({
   const [fitKey, setFitKey] = useState(0);
   const [view, setView] = useState<View>(() => {
     try {
-      return localStorage.getItem('cf-view') === 'board' ? 'board' : 'graph';
+      return localStorage.getItem('lr-view') === 'board' ? 'board' : 'graph';
     } catch {
       return 'graph';
     }
@@ -329,11 +329,11 @@ function Workspace({
     minSize: 300,
     maxSize: percent(60, { max: pixel(900) }),
     containerRef: mainRef,
-    autoSaveId: 'cf-panel',
+    autoSaveId: 'lr-panel',
   });
   useEffect(() => {
     try {
-      localStorage.setItem('cf-view', view);
+      localStorage.setItem('lr-view', view);
     } catch {
       // ignore
     }
@@ -422,27 +422,27 @@ function Workspace({
     return () => window.removeEventListener('keydown', h);
   }, [selected, focus, setFocus]);
 
-  // The live projection is the union of the streams; workflows anchor focus and the scoped timeline.
+  // The live projection is the union of the streams; seams anchor focus and the scoped timeline.
   const liveState = useMemo(() => unionState(Object.values(streams)), [streams]);
-  const wfs = useMemo(() => workflows(liveState), [liveState]);
+  const allSeams = useMemo(() => seams(liveState), [liveState]);
   const entityStream = useMemo(() => {
     const m = new Map<string, string>();
     for (const [sid, st] of Object.entries(streams)) for (const id of st.order) m.set(id, sid);
     return m;
   }, [streams]);
-  const focusWfs = useMemo(
-    () => focus.map((id) => wfs.list.find((w) => w.id === id)).filter((w): w is Workflow => !!w),
-    [focus, wfs],
+  const focusSeams = useMemo(
+    () => focus.map((id) => allSeams.list.find((w) => w.id === id)).filter((w): w is Seam => !!w),
+    [focus, allSeams],
   );
   const focusSet = useMemo(() => new Set(focus), [focus]);
-  // A focused workflow that leaves the log leaves the focus.
+  // A focused seam that leaves the log leaves the focus.
   useEffect(() => {
-    if (focusWfs.length !== focus.length) setFocusState(focusWfs.map((w) => w.id));
-  }, [focus, focusWfs]);
-  const focusLabel = focusWfs.length === 1 ? focusWfs[0]!.title : `${focusWfs.length} workflows`;
+    if (focusSeams.length !== focus.length) setFocusState(focusSeams.map((w) => w.id));
+  }, [focus, focusSeams]);
+  const focusLabel = focusSeams.length === 1 ? focusSeams[0]!.title : `${focusSeams.length} seams`;
   const focusStreams = useMemo(
-    () => [...new Set(focusWfs.map((w) => entityStream.get(w.id)).filter((s): s is string => !!s))],
-    [focusWfs, entityStream],
+    () => [...new Set(focusSeams.map((w) => entityStream.get(w.id)).filter((s): s is string => !!s))],
+    [focusSeams, entityStream],
   );
 
   // Scrubbing needs the focused streams' events; fetch them once per stream and keep them current.
@@ -469,16 +469,16 @@ function Workspace({
       .flatMap((sid) => cache.current[sid]!)
       .sort((a, b) => a.seq! - b.seq!);
   }, [focusStreams, cacheVersion]);
-  /** Indices into focusAll of the events that belong to the focused workflows. */
+  /** Indices into focusAll of the events that belong to the focused seams. */
   const focusIdx = useMemo(() => {
     if (!focusAll) return null;
     const out: number[] = [];
     focusAll.forEach((e, i) => {
-      const w = wfs.of.get(eventEntityId(e));
+      const w = allSeams.of.get(eventEntityId(e));
       if (w && focusSet.has(w)) out.push(i);
     });
     return out;
-  }, [focusAll, wfs, focusSet]);
+  }, [focusAll, allSeams, focusSet]);
 
   const live = cursor === null;
   const max = focusIdx ? focusIdx.length : 0;
@@ -493,25 +493,25 @@ function Workspace({
   }, [cursor, focusAll, focusIdx, liveState, streams, focusStreams]);
 
   const focusIds = useMemo(
-    () => (focusWfs.length ? new Set(focusWfs.flatMap((w) => [...w.actions, ...w.artefacts])) : undefined),
-    [focusWfs],
+    () => (focusSeams.length ? new Set(focusSeams.flatMap((w) => [...w.actions, ...w.artefacts])) : undefined),
+    [focusSeams],
   );
   const sum = useMemo(() => summarise(state, focusIds), [state, focusIds]);
 
-  // Groups and workflows fold up the moment they finish: the coal face has been eaten.
-  // A finished workflow that a follow-up reopens unfolds again.
+  // Groups and seams fold up the moment they finish: the coal face has been eaten.
+  // A finished seam that a follow-up reopens unfolds again.
   const seenDone = useRef(new Set<string>());
   useEffect(() => {
     if (!live) return;
     const freshGroups = Object.values(state.actions).filter(
       (t) => t.children.length && t.status === 'done' && !seenDone.current.has(t.id),
     );
-    const freshWfs = wfs.list.filter((w) => w.status === 'done' && !seenDone.current.has(`wf:${w.id}`));
-    const reopened = wfs.list.filter((w) => w.status !== 'done' && seenDone.current.has(`wf:${w.id}`));
-    if (!freshGroups.length && !freshWfs.length && !reopened.length) return;
+    const freshSeams = allSeams.list.filter((w) => w.status === 'done' && !seenDone.current.has(`seam:${w.id}`));
+    const reopened = allSeams.list.filter((w) => w.status !== 'done' && seenDone.current.has(`seam:${w.id}`));
+    if (!freshGroups.length && !freshSeams.length && !reopened.length) return;
     for (const t of freshGroups) seenDone.current.add(t.id);
-    for (const w of freshWfs) seenDone.current.add(`wf:${w.id}`);
-    for (const w of reopened) seenDone.current.delete(`wf:${w.id}`);
+    for (const w of freshSeams) seenDone.current.add(`seam:${w.id}`);
+    for (const w of reopened) seenDone.current.delete(`seam:${w.id}`);
     if (freshGroups.length) {
       setCollapsedGroups((prevSet) => {
         const next = new Set(prevSet);
@@ -519,15 +519,15 @@ function Workspace({
         return next;
       });
     }
-    if (freshWfs.length || reopened.length) {
+    if (freshSeams.length || reopened.length) {
       setFrames((prevFrames) => {
         const next = { ...prevFrames };
-        for (const w of freshWfs) next[w.id] = { ...next[w.id], collapsed: true };
+        for (const w of freshSeams) next[w.id] = { ...next[w.id], collapsed: true };
         for (const w of reopened) next[w.id] = { ...next[w.id], collapsed: false };
         return next;
       });
     }
-  }, [state, wfs, live]);
+  }, [state, allSeams, live]);
 
   // Each command that can be undone names the one that undoes it; the toast
   // after it carries an Undo. Nothing is rewritten: the undo is one more event.
@@ -544,7 +544,7 @@ function Workspace({
           const title = stateRef.current.actions[id]?.title ?? id;
           showToast({
             body: `${undo.did} "${title}"`,
-            uniqueID: 'cf-undo',
+            uniqueID: 'lr-undo',
             endContent: <Button label="Undo" size="sm" variant="ghost" onClick={() => void run(undo.command, { actionId: id })} />,
           });
         }
@@ -587,11 +587,11 @@ function Workspace({
     setFitKey((k) => k + 1);
   }, []);
 
-  const total = focusIds ? focusWfs.reduce((n, w) => n + w.actions.length, 0) : Object.keys(state.actions).length;
+  const total = focusIds ? focusSeams.reduce((n, w) => n + w.actions.length, 0) : Object.keys(state.actions).length;
   const lastEvent = focusIdx && focusAll ? focusAll[focusIdx[(cursor ?? focusIdx.length) - 1] ?? -1] : lastLive;
   const shown = focusIdx ? (cursor ?? focusIdx.length) : null;
   const lastText = lastEvent ? describeEvent(state, lastEvent) : head === null ? 'loading' : head === 0 ? 'empty log' : `live · ${head} events`;
-  const wfOptions = useMemo(() => wfs.list.map((w) => ({ value: w.id, label: w.title })), [wfs]);
+  const wfOptions = useMemo(() => allSeams.list.map((w) => ({ value: w.id, label: w.title })), [allSeams]);
   const projectOptions = useMemo(
     () => [...projects.map((p) => ({ value: p.id, label: `${p.owner}/${p.name}` })), { value: '__add', label: 'Add project…' }],
     [projects],
@@ -608,12 +608,12 @@ function Workspace({
   );
 
   return (
-    <div className="cf-app">
-      <header className="cf-top">
-        <div className="cf-brand">
-          <span className="cf-logo" aria-hidden="true" />
-          <span className="cf-brand-name">Coalface</span>
-          <span className="cf-top-project">
+    <div className="lr-app">
+      <header className="lr-top">
+        <div className="lr-brand">
+          <span className="lr-logo" aria-hidden="true" />
+          <span className="lr-brand-name">Lamproom</span>
+          <span className="lr-top-project">
             <Selector
               label="Project"
               isLabelHidden
@@ -631,40 +631,40 @@ function Workspace({
               startIcon={<Icon name="folder" size={14} />}
             />
           </span>
-          <span className={cx('cf-picker', focus.length > 0 && 'is-focused')}>
+          <span className={cx('lr-picker', focus.length > 0 && 'is-focused')}>
             <MultiSelector
-              label="Focus workflows"
+              label="Focus seams"
               isLabelHidden
               size="sm"
               variant={focus.length ? 'secondary' : 'ghost'}
-              placeholder="All workflows"
+              placeholder="All seams"
               options={wfOptions}
               value={focus}
               onChange={(v: string[]) => setFocus(v)}
               hasClear
               hasSearch={wfOptions.length > 8}
               triggerDisplay="labels"
-              formatValue={(items) => (items.length === 1 ? items[0]!.label : `${items.length} workflows`)}
+              formatValue={(items) => (items.length === 1 ? items[0]!.label : `${items.length} seams`)}
               width={focus.length ? 260 : 150}
             />
           </span>
         </div>
-        <div className="cf-stats">
+        <div className="lr-stats">
           <Stat label="ready for agents" value={sum.agentFace} tone="ready" />
           <Stat label="waiting on you" value={sum.humanQueue} tone="human" />
           <Stat label="active" value={sum.actions.active} tone="active" />
           <Stat label="done" value={`${sum.actions.done}/${total}`} tone="done" />
           <Stat label="undecomposed large" value={sum.undecomposedLarge} tone="muted" title="Large or unsized leaf actions: the honest measure of remaining uncertainty" />
         </div>
-        <div className="cf-tools">
+        <div className="lr-tools">
           <Hint content={connected ? 'Connected to the server' : 'Disconnected'} placement="below">
-            <span className={cx('cf-conn', connected ? 'is-on' : 'is-off')}>
+            <span className={cx('lr-conn', connected ? 'is-on' : 'is-off')}>
               <StatusDot
                 variant={connected ? 'success' : 'neutral'}
                 label={connected ? 'Connected to the server' : 'Disconnected'}
                 isPulsing={connected}
               />
-              <span className="cf-conn-text">{connected ? 'live' : 'offline'}</span>
+              <span className="lr-conn-text">{connected ? 'live' : 'offline'}</span>
             </span>
           </Hint>
           {newGoal}
@@ -684,7 +684,7 @@ function Workspace({
               />
               <IconButton
                 label="Tidy"
-                tooltip="Tidy: return unpinned workflows to the automatic stack"
+                tooltip="Tidy: return unpinned seams to the automatic stack"
                 variant="ghost"
                 size="sm"
                 icon={<Icon name="tidy" size={16} />}
@@ -704,8 +704,8 @@ function Workspace({
         </div>
       </header>
 
-      <main ref={mainRef} className="cf-main" style={{ '--panel-w': `${pane.size}px` } as CSSProperties}>
-        <div className="cf-canvas">
+      <main ref={mainRef} className="lr-main" style={{ '--panel-w': `${pane.size}px` } as CSSProperties}>
+        <div className="lr-canvas">
           {view === 'graph' ? (
             <Graph
               state={state}
@@ -726,40 +726,40 @@ function Workspace({
             <Board state={state} focus={focus} selected={selected} onSelect={setSelected} onFocus={toggleFocus} />
           )}
           {head !== null && state.order.length === 0 && (
-            <div className="cf-empty">
+            <div className="lr-empty">
               <EmptyState
-                title="No workflow yet"
-                description={`Create a goal here, or tell your agent in a checkout of ${proj.owner}/${proj.name}: /coalface:mine <goal>`}
+                title="No seam yet"
+                description={`Create a goal here, or tell your agent in a checkout of ${proj.owner}/${proj.name}: /lamproom:mine <goal>`}
                 icon={<Icon name="flag" size={28} />}
                 actions={newGoal}
               />
             </div>
           )}
           {!live && (
-            <div className="cf-history-banner">
+            <div className="lr-history-banner">
               Viewing history · event {cursor} of {max} in “{focusLabel}”
             </div>
           )}
           {view === 'graph' && <Legend />}
         </div>
-        <ResizeHandle className="cf-splitter" direction="horizontal" isReversed hasDivider label="Resize the details pane" resizable={pane.props} />
+        <ResizeHandle className="lr-splitter" direction="horizontal" isReversed hasDivider label="Resize the details pane" resizable={pane.props} />
         <Panel state={state} selected={selected} human={me.actor} live={live} onSelect={setSelected} run={run} />
       </main>
 
-      <footer className="cf-timeline">
-        <span className={cx('cf-live', live && 'is-live')}>
+      <footer className="lr-timeline">
+        <span className={cx('lr-live', live && 'is-live')}>
           <Button
             label="Live"
             size="sm"
             variant={live ? 'secondary' : 'ghost'}
-            icon={<span className="cf-live-dot" />}
+            icon={<span className="lr-live-dot" />}
             onClick={() => setCursor(null)}
           />
         </span>
-        <Hint content={focusWfs.length ? undefined : 'Focus a workflow to replay its history'} placement="above">
-          <div className="cf-tl-slider">
+        <Hint content={focusSeams.length ? undefined : 'Focus a seam to replay its history'} placement="above">
+          <div className="lr-tl-slider">
             <Slider
-              label={focusWfs.length ? `Replay ${focusLabel}` : 'Focus a workflow to replay its history'}
+              label={focusSeams.length ? `Replay ${focusLabel}` : 'Focus a seam to replay its history'}
               isLabelHidden
               min={0}
               max={Math.max(max, 1)}
@@ -771,14 +771,14 @@ function Workspace({
             />
           </div>
         </Hint>
-        <span className="cf-tl-label">
+        <span className="lr-tl-label">
           {shown !== null && (
-            <span className="cf-tl-n">
+            <span className="lr-tl-n">
               #{shown}/{max}
             </span>
           )}
           <Hint content={lastText}>
-            <span className="cf-tl-text">
+            <span className="lr-tl-text">
               {lastText}
             </span>
           </Hint>
@@ -810,9 +810,9 @@ const UNDO: Record<string, { did: string; command: string }> = {
 function Stat({ label, value, tone, title }: { label: string; value: number | string; tone: string; title?: string }) {
   return (
     <Hint content={title} placement="below">
-      <div className={cx('cf-stat', `tone-${tone}`)}>
-        <span className="cf-stat-value">{value}</span>
-        <span className="cf-stat-label">{label}</span>
+      <div className={cx('lr-stat', `tone-${tone}`)}>
+        <span className="lr-stat-value">{value}</span>
+        <span className="lr-stat-label">{label}</span>
       </div>
     </Hint>
   );
@@ -820,10 +820,10 @@ function Stat({ label, value, tone, title }: { label: string; value: number | st
 
 function Legend() {
   return (
-    <div className="cf-legend">
+    <div className="lr-legend">
       {(['ready', 'active', 'submitted', 'blocked', 'rework', 'done'] as const).map((s) => (
         <span key={s} className={`st-${s}`}>
-          <span className="cf-dot" />
+          <span className="lr-dot" />
           {s === 'submitted' ? 'awaiting review' : s}
         </span>
       ))}
@@ -918,7 +918,7 @@ function GoalDialog({
     <>
       <Dialog isOpen={isOpen} onOpenChange={close} purpose="form" width={520}>
         <DialogHeader title="New goal" subtitle="The agent sizes and decomposes it from the coal face." />
-        <form onSubmit={submit} className="cf-goal-form">
+        <form onSubmit={submit} className="lr-goal-form">
           <LayoutContent>
             <VStack gap={4}>
               <TextInput
@@ -938,7 +938,7 @@ function GoalDialog({
                 isOptional
                 width="100%"
               />
-              <div className="cf-dl">
+              <div className="lr-dl">
                 <Text type="label">Deliverables</Text>
                 {deliverables.length ? (
                   <List hasDividers density="compact">
@@ -982,7 +982,7 @@ function GoalDialog({
           </LayoutContent>
           <LayoutFooter>
             {/* One joined control across the dialog: the two ways out of it. */}
-            <div className="cf-goal-actions">
+            <div className="lr-goal-actions">
               <ButtonGroup label="Goal">
                 <Button label="Cancel" variant="secondary" onClick={onClose} isDisabled={busy} />
                 <Button
@@ -1045,7 +1045,7 @@ function DeliverableDialog({
         title={isNew ? 'New deliverable' : 'Edit deliverable'}
         subtitle="Something concrete the goal must produce. A pull request or question also gets its human step from policy."
       />
-      <form onSubmit={submit} className="cf-goal-form">
+      <form onSubmit={submit} className="lr-goal-form">
         <LayoutContent>
           <VStack gap={4}>
             <Selector label="Kind" options={KINDS} value={kind} onChange={setKind} startIcon={<Icon name={kindIcon(kind)} size={16} />} width="100%" />
@@ -1062,7 +1062,7 @@ function DeliverableDialog({
           </VStack>
         </LayoutContent>
         <LayoutFooter>
-          <div className="cf-goal-actions">
+          <div className="lr-goal-actions">
             <ButtonGroup label="Deliverable">
               <Button label="Cancel" variant="secondary" onClick={onClose} />
               <Button label={isNew ? 'Add deliverable' : 'Save'} variant="primary" type="submit" />

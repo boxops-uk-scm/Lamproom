@@ -1,13 +1,13 @@
-// A fragment is the composable unit of workflow: an open hypergraph, that is
+// A fragment is the composable unit of seam: an open hypergraph, that is
 // a cospan  inputs -> inner graph <- outputs. Its boundary is a set of named
 // ports typed by artefact kind; its inside is artefacts and actions wired to
 // those ports. Fragments compose by gluing an output boundary to an input
-// boundary, and a fragment is instantiated into a workflow by binding its
+// boundary, and a fragment is instantiated into a seam by binding its
 // input ports (and optionally its output ports) to existing artefacts.
 //
 // Policy atoms are fragments (atomFragment); a decomposition is a fragment
 // instantiated under an action with the action's own boundary (decomposeWith
-// in commands.ts); a workflow is a closed composition, which is why it, and
+// in commands.ts); a seam is a closed composition, which is why it, and
 // not the fragment, carries the stream.
 
 import type { Requirement, RichText, Size } from './types.js';

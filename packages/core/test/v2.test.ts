@@ -17,7 +17,7 @@ import {
   unionState,
   upcast,
   validateFragment,
-  workflows,
+  seams,
   type Actor,
   type Ctx,
   type Event,
@@ -57,8 +57,8 @@ function finish(m: Mem, goalId: string) {
   return pr;
 }
 
-describe('one workflow per stream', () => {
-  it('refuses an action whose inputs span two workflows', () => {
+describe('one seam per stream', () => {
+  it('refuses an action whose inputs span two seams', () => {
     const m = new Mem();
     const a = goal(m, 'A');
     const b = goal(m, 'B');
@@ -66,15 +66,15 @@ describe('one workflow per stream', () => {
     const inB = m.state.actions[b.id]!.outputs[0]!;
     expect(() =>
       m.run(agent, (ctx) => proposeActions(ctx, { actions: [{ title: 'bridge', inputs: [inA, inB], outputs: [] }] })),
-    ).toThrow(/different workflows/);
+    ).toThrow(/different seams/);
   });
-  it('refuses amending an action to read another workflow', () => {
+  it('refuses amending an action to read another seam', () => {
     const m = new Mem();
     const a = goal(m, 'A');
     const b = goal(m, 'B');
     const inB = m.state.actions[b.id]!.outputs[0]!;
     expect(() => m.run(agent, (ctx) => proposeActions(ctx, { parent: a.id, actions: [{ title: 'child', inputs: [inB] }] }))).toThrow(
-      /different workflows/,
+      /different seams/,
     );
   });
   it('the union of stream projections is the projection of the union', () => {
@@ -82,8 +82,8 @@ describe('one workflow per stream', () => {
     goal(m, 'A');
     goal(m, 'B');
     const all = m.state;
-    const wfs = workflows(all);
-    const streams = wfs.list.map((w) => project(all.events.filter((e) => wfs.of.get(entity(e)) === w.id)));
+    const allSeams = seams(all);
+    const streams = allSeams.list.map((w) => project(all.events.filter((e) => allSeams.of.get(entity(e)) === w.id)));
     const u = unionState(streams);
     expect(Object.keys(u.actions).sort()).toEqual(Object.keys(all.actions).sort());
     expect(u.order).toEqual(all.order);
@@ -98,25 +98,25 @@ function entity(e: Event): string {
 }
 
 describe('follow-ups', () => {
-  it('a finished workflow reopens when a follow-up takes its deliverable as input', () => {
+  it('a finished seam reopens when a follow-up takes its deliverable as input', () => {
     const m = new Mem();
     const g = goal(m, 'Ship login');
     const pr = finish(m, g.id);
-    let w = workflows(m.state).list[0]!;
+    let w = seams(m.state).list[0]!;
     expect(w.status).toBe('done');
     const terminal = m.state.artefacts[pr]!.closedTo!;
     const f = m.run(agent, (ctx) =>
       proposeActions(ctx, { actions: [{ title: 'Add rate limiting', size: 'S', inputs: [terminal], outputs: [{ kind: 'pull-request', title: 'rate limit PR' }] }] }),
     ).actions[0]!;
     const s = m.state;
-    w = workflows(s).list[0]!;
-    expect(workflows(s).list).toHaveLength(1);
+    w = seams(s).list[0]!;
+    expect(seams(s).list).toHaveLength(1);
     expect(w.followUps).toEqual([f.id]);
     expect(w.status).toBe('ready');
     expect(s.actions[f.id]!.status).toBe('ready');
     expect(w.deliverables).toHaveLength(2);
     finish(m, f.id);
-    expect(workflows(m.state).list[0]!.status).toBe('done');
+    expect(seams(m.state).list[0]!.status).toBe('done');
   });
 });
 
@@ -175,7 +175,7 @@ describe('fragments', () => {
     expect(s.actions[b!.id]!.inputs).toEqual([r.artefacts.note]);
     expect(s.actions[b!.id]!.outputs).toEqual([r.artefacts.pr]);
     expect(s.actions[g.id]!.status).toBe('decomposed');
-    expect(workflows(s).list).toHaveLength(1);
+    expect(seams(s).list).toHaveLength(1);
     expect(() => m.run(agent, (ctx) => decomposeWith(ctx, { parent: g.id, fragment: design }))).toThrow(/not bound/);
   });
 });

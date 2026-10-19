@@ -4,8 +4,8 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
-import * as core from '@coalface/core';
-import type { Actor } from '@coalface/core';
+import * as core from '@lamproom/core';
+import type { Actor } from '@lamproom/core';
 import { Auth, actorFor, agentActor, readCookie, type User } from './auth.js';
 import { HttpError } from './github.js';
 import { runCommand, type CommandRequest } from './commands.js';
@@ -71,7 +71,7 @@ export function createServer(opts: ServerOptions): http.Server {
   const r = new Router();
   const secure = opts.publicUrl.startsWith('https://');
   const cookie = (value: string, maxAge: number) =>
-    `cf_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? '; Secure' : ''}`;
+    `lr_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? '; Secure' : ''}`;
 
   // ---- sign-in -----------------------------------------------------------
 
@@ -100,7 +100,7 @@ export function createServer(opts: ServerOptions): http.Server {
     'POST',
     '/api/auth/logout',
     async ({ req, res }) => {
-      await auth.endSession(readCookie(req.headers.cookie, 'cf_session'));
+      await auth.endSession(readCookie(req.headers.cookie, 'lr_session'));
       res.setHeader('Set-Cookie', cookie('', 0));
       json(res, 200, { ok: true });
     },
@@ -341,7 +341,7 @@ const MIME: Record<string, string> = {
 function serveStatic(dir: string | undefined, pathname: string, res: Res): void {
   if (!dir) {
     res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end('<p>Coalface API is running, but the UI bundle was not found. Build it with <code>pnpm --filter @coalface/ui build</code>.</p>');
+    res.end('<p>Lamproom API is running, but the UI bundle was not found. Build it with <code>pnpm --filter @lamproom/ui build</code>.</p>');
     return;
   }
   let file = path.join(dir, pathname === '/' ? 'index.html' : pathname);

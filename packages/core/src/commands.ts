@@ -7,7 +7,7 @@ import { newActionId, newArtefactId, newEventId } from './ids.js';
 import { joinRichText } from './richtext.js';
 import { fill } from './policy.js';
 import { current } from './project.js';
-import { streamOf, workflows } from './workflows.js';
+import { streamOf, seams } from './seams.js';
 import {
   SCHEMA_VERSION,
   type ActionState,
@@ -87,16 +87,16 @@ function getArtefact(ctx: Ctx, id: string): ArtefactState {
 }
 
 /**
- * No edges between workflows: everything a command wires together must
- * already sit in one workflow (or in none). The server also runs commands
+ * No edges between seams: everything a command wires together must
+ * already sit in one seam (or in none). The server also runs commands
  * against a single stream's state, but the rule is the model's, so it holds
  * for a whole-project state too.
  */
-function assertOneWorkflow(ctx: Ctx, ids: string[]): string | undefined {
+function assertOneSeam(ctx: Ctx, ids: string[]): string | undefined {
   const existing = ids.filter((id) => ctx.state.actions[id] || ctx.state.artefacts[id]);
   if (existing.length < 2) return undefined;
   try {
-    return streamOf(ctx.state, existing, workflows(ctx.state).of);
+    return streamOf(ctx.state, existing, seams(ctx.state).of);
   } catch (e) {
     throw new CommandError(e instanceof Error ? e.message : String(e));
   }
@@ -245,9 +245,9 @@ export function proposeActions(ctx: Ctx, input: ProposeInput): ProposeResult {
   const events: Event[] = [];
   const warnings: string[] = [];
   const out: ProposeResult['actions'] = [];
-  // One batch wires into one workflow: the parent, every input, and every
+  // One batch wires into one seam: the parent, every input, and every
   // existing output must agree.
-  assertOneWorkflow(ctx, [
+  assertOneSeam(ctx, [
     ...(input.parent ? [input.parent] : []),
     ...input.actions.flatMap((a) => [...(a.inputs ?? []), ...(a.outputs ?? []).filter((o): o is string => typeof o === 'string')]),
   ]);
@@ -302,7 +302,7 @@ export interface DecomposeResult extends ProposeResult {
 /**
  * Decompose an action by instantiating a fragment under it. The fragment's
  * input ports bind to artefacts the parent can see (its own inputs, or any
- * artefact in the workflow); its output ports bind to the parent's outputs
+ * artefact in the seam); its output ports bind to the parent's outputs
  * so the children deliver the parent's deliverables; everything else inside
  * is declared fresh, with policy expansion as usual. Equivalent to proposing
  * the children by hand, which is what it records.
@@ -315,7 +315,7 @@ export function decomposeWith(ctx: Ctx, input: DecomposeInput): DecomposeResult 
   const bind = { ...(input.bind ?? {}) };
   for (const p of f.inputs) if (!bind[p]) throw new CommandError(`input port "${p}" is not bound to an artefact`);
   for (const id of Object.values(bind)) getArtefact(ctx, id);
-  assertOneWorkflow(ctx, [parent.id, ...Object.values(bind)]);
+  assertOneSeam(ctx, [parent.id, ...Object.values(bind)]);
   for (const name of Object.keys(bind)) {
     if (!f.inputs.includes(name) && !(name in f.artefacts)) throw new CommandError(`bound name "${name}" is not a port or inner artefact`);
   }
@@ -455,7 +455,7 @@ export function amend(ctx: Ctx, input: AmendInput): Result & { addedOutputs: str
   const t = getAction(ctx, input.actionId);
   const events: Event[] = [];
   for (const i of input.addInputs ?? []) getArtefact(ctx, i);
-  assertOneWorkflow(ctx, [t.id, ...(input.addInputs ?? []), ...(input.addOutputs ?? []).filter((o): o is string => typeof o === 'string')]);
+  assertOneSeam(ctx, [t.id, ...(input.addInputs ?? []), ...(input.addOutputs ?? []).filter((o): o is string => typeof o === 'string')]);
   const addOutputs: string[] = [];
   for (const o of input.addOutputs ?? []) {
     if (typeof o === 'string') {

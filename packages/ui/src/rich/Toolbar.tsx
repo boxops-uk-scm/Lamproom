@@ -211,14 +211,14 @@ export function Toolbar({ isDisabled = false }: { isDisabled?: boolean }) {
 
   return (
     // Swallowing the press keeps focus, and so the selection, in the editor; click still fires.
-    <div ref={bar} className="cf-rt-toolbar" role="toolbar" aria-label="Formatting" onMouseDown={(e) => e.preventDefault()}>
-      <div className="cf-rt-group" role="group" aria-label="Text">
+    <div ref={bar} className="lr-rt-toolbar" role="toolbar" aria-label="Formatting" onMouseDown={(e) => e.preventDefault()}>
+      <div className="lr-rt-group" role="group" aria-label="Text">
         <ToggleButton
           label="Bold"
           tooltip={`Bold (${MOD}B)`}
           size="sm"
           isIconOnly
-          icon={<b className="cf-rt-glyph">B</b>}
+          icon={<b className="lr-rt-glyph">B</b>}
           isPressed={has('bold')}
           onPressedChange={() => format('bold')}
           isDisabled={isDisabled}
@@ -228,7 +228,7 @@ export function Toolbar({ isDisabled = false }: { isDisabled?: boolean }) {
           tooltip={`Italic (${MOD}I)`}
           size="sm"
           isIconOnly
-          icon={<i className="cf-rt-glyph">I</i>}
+          icon={<i className="lr-rt-glyph">I</i>}
           isPressed={has('italic')}
           onPressedChange={() => format('italic')}
           isDisabled={isDisabled}
@@ -237,7 +237,7 @@ export function Toolbar({ isDisabled = false }: { isDisabled?: boolean }) {
           label="Strikethrough"
           size="sm"
           isIconOnly
-          icon={<s className="cf-rt-glyph">S</s>}
+          icon={<s className="lr-rt-glyph">S</s>}
           isPressed={has('strikethrough')}
           onPressedChange={() => format('strikethrough')}
           isDisabled={isDisabled}
@@ -252,8 +252,8 @@ export function Toolbar({ isDisabled = false }: { isDisabled?: boolean }) {
           isDisabled={isDisabled}
         />
       </div>
-      <span className="cf-rt-sep" aria-hidden="true" />
-      <div className="cf-rt-group" role="group" aria-label="Link">
+      <span className="lr-rt-sep" aria-hidden="true" />
+      <div className="lr-rt-group" role="group" aria-label="Link">
         <ToggleButton
           label={cur?.link ? 'Remove link' : 'Link'}
           tooltip={cur?.link ? 'Remove link' : `Link (${MOD}K)`}
@@ -275,7 +275,7 @@ export function Toolbar({ isDisabled = false }: { isDisabled?: boolean }) {
           padding={2}
           content={
             <form
-              className="cf-rt-linkform"
+              className="lr-rt-linkform"
               onSubmit={(e) => {
                 e.preventDefault();
                 applyLink();
@@ -291,8 +291,8 @@ export function Toolbar({ isDisabled = false }: { isDisabled?: boolean }) {
           }
         />
       </div>
-      <span className="cf-rt-sep" aria-hidden="true" />
-      <div className="cf-rt-group" role="group" aria-label="Block">
+      <span className="lr-rt-sep" aria-hidden="true" />
+      <div className="lr-rt-group" role="group" aria-label="Block">
         <ToggleButton
           label="Bulleted list"
           size="sm"

@@ -1,5 +1,5 @@
 {
-  "name": "@coalface/plugin",
+  "name": "@lamproom/plugin",
   "version": "0.1.0",
   "type": "module",
   "private": true,
@@ -9,8 +9,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@coalface/client": "workspace:*",
-    "@coalface/core": "workspace:*",
+    "@lamproom/client": "workspace:*",
+    "@lamproom/core": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.12.0",
     "zod": "^3.25.0"
   },

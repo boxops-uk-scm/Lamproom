@@ -129,11 +129,11 @@ export const boxopsTheme = defineTheme({
     '--radius-page': '28px',
   },
 
-  // Boxops values Astryx has no role for, used by Coalface's own styles.
+  // Boxops values Astryx has no role for, used by Lamproom's own styles.
   localTokens: {
-    '--cf-accent-subtle': ld(bx.semanticColor.accentSubtle),
-    '--cf-accent-selected-hover': ld(bx.semanticColor.accentSelectedHover),
-    '--cf-background-input': ld(bx.backgroundColor.input),
+    '--lr-accent-subtle': ld(bx.semanticColor.accentSubtle),
+    '--lr-accent-selected-hover': ld(bx.semanticColor.accentSelectedHover),
+    '--lr-background-input': ld(bx.backgroundColor.input),
   },
   components: {
     // Boxops tooltips are inverted: dark on light, light on dark.

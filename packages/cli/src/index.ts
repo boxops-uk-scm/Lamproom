@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// coalface CLI. `serve` runs the server; everything else talks to one.
+// lamproom CLI. `serve` runs the server; everything else talks to one.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as core from '@coalface/core';
-import { Store } from '@coalface/core/node';
-import { Client, ClientError, configPath, login, logout, parseRepo, repoOf, resolveProject, resolveServer, tokenFor } from '@coalface/client';
+import * as core from '@lamproom/core';
+import { Store } from '@lamproom/core/node';
+import { Client, ClientError, configPath, login, logout, parseRepo, repoOf, resolveProject, resolveServer, tokenFor } from '@lamproom/client';
 
 // node:sqlite still prints an experimental warning on Node 22; it is the one we use on purpose.
 const emitWarning = process.emitWarning.bind(process);
@@ -49,7 +49,7 @@ const projectOf = async (c: Client) => resolveProject(c, opt('dir') ?? process.c
 try {
   switch (cmd) {
     case 'serve': {
-      const { start } = await import('@coalface/server');
+      const { start } = await import('@lamproom/server');
       const here = path.dirname(fileURLToPath(import.meta.url));
       const uiDir = opt('ui') ?? [path.resolve(here, '../../ui/dist'), path.resolve(here, '../ui')].find((p) => fs.existsSync(path.join(p, 'index.html')));
       const s = await start({
@@ -59,10 +59,10 @@ try {
         uiDir,
         log: (l) => console.error(l),
       });
-      console.log(`coalface server  ${s.url}`);
-      console.log(`data             ${opt('data') ?? process.env.COALFACE_DATA ?? '~/.coalface'}`);
-      console.log(`sign-in          ${s.auth.mode === 'dev' ? `dev user "${s.auth.devUser}" (COALFACE_DEV_USER)` : 'GitHub'}`);
-      if (!uiDir) console.log('ui bundle not found; run "pnpm --filter @coalface/ui build" or pass --ui <dir>');
+      console.log(`lamproom server  ${s.url}`);
+      console.log(`data             ${opt('data') ?? process.env.LAMPROOM_DATA ?? '~/.lamproom'}`);
+      console.log(`sign-in          ${s.auth.mode === 'dev' ? `dev user "${s.auth.devUser}" (LAMPROOM_DEV_USER)` : 'GitHub'}`);
+      if (!uiDir) console.log('ui bundle not found; run "pnpm --filter @lamproom/ui build" or pass --ui <dir>');
       break;
     }
     case 'login': {
@@ -85,7 +85,7 @@ try {
       const c = client();
       const spec = positional()[0];
       const repo = spec ? parseRepo(spec) : await repoOf(opt('dir') ?? process.cwd());
-      if (!repo) die('usage: coalface init [owner/name]   (defaults to the GitHub remote of this directory)');
+      if (!repo) die('usage: lamproom init [owner/name]   (defaults to the GitHub remote of this directory)');
       const p = await c.createProject(repo!.owner, repo!.name);
       console.log(`project ${p.owner}/${p.name} registered on ${server} (${p.id})`);
       break;
@@ -102,7 +102,7 @@ try {
     }
     case 'answer': {
       const [questionId, ...rest] = positional();
-      if (!questionId || !rest.length) die('usage: coalface answer <questionId> <text...>   (Markdown)');
+      if (!questionId || !rest.length) die('usage: lamproom answer <questionId> <text...>   (Markdown)');
       const c = client();
       const p = await projectOf(c);
       await c.command(p.id, { command: 'answer', args: { questionId, text: rest.join(' ') } });
@@ -112,7 +112,7 @@ try {
     case 'review': {
       const [artefactId, verdict, ...notes] = positional();
       if (!artefactId || (verdict !== 'accept' && verdict !== 'reject')) {
-        die('usage: coalface review <artefactId> accept|reject [notes...]   (Markdown, one per argument)');
+        die('usage: lamproom review <artefactId> accept|reject [notes...]   (Markdown, one per argument)');
       }
       const c = client();
       const p = await projectOf(c);
@@ -123,7 +123,7 @@ try {
     case 'restore':
     case 'reopen': {
       const [actionId, ...note] = positional();
-      if (!actionId) die(`usage: coalface ${cmd} <actionId> [note...]   (Markdown)`);
+      if (!actionId) die(`usage: lamproom ${cmd} <actionId> [note...]   (Markdown)`);
       const c = client();
       const p = await projectOf(c);
       await c.command(p.id, { command: cmd, args: { actionId, note: note.length ? note.join(' ') : undefined } });
@@ -132,11 +132,11 @@ try {
     }
     case 'import': {
       const [file] = positional();
-      if (!file) die('usage: coalface import <events.jsonl>');
+      if (!file) die('usage: lamproom import <events.jsonl>');
       const c = client();
       const p = await projectOf(c);
       const r = await c.importEvents(p.id, fs.readFileSync(file!, 'utf8'));
-      console.log(`imported ${r.imported} events into ${r.streams} workflow stream(s) of ${p.owner}/${p.name}`);
+      console.log(`imported ${r.imported} events into ${r.streams} stream(s), one per seam, of ${p.owner}/${p.name}`);
       break;
     }
     case 'export': {
@@ -148,15 +148,15 @@ try {
     case 'replay': {
       // Offline: project the first n events of a file log, the way the tests do.
       const [file, n] = positional();
-      if (!file) die('usage: coalface replay <events.jsonl> [n]');
+      if (!file) die('usage: lamproom replay <events.jsonl> [n]');
       const events = new Store(path.dirname(path.resolve(file!))).readEventsFrom(path.resolve(file!)).slice(0, Number(n ?? Infinity));
       console.log(core.renderStatus(core.project(events)));
       break;
     }
     default:
-      console.log(`coalface <command>
+      console.log(`lamproom <command>
 
-  serve [--port 4411] [--data ~/.coalface] [--ui dir]   run the server and UI
+  serve [--port 4411] [--data ~/.lamproom] [--ui dir]   run the server and UI
   login [--server url] [--label name]   sign in from this terminal (GitHub device flow)
   logout                                forget this terminal's token
   whoami                                who the token belongs to
@@ -172,7 +172,7 @@ try {
   replay <events.jsonl> [n]             project the first n events of a file, offline
 
 Options: --server <url> (default ${server}), --project owner/name, --dir <path> to pick the repository.
-Server env: COALFACE_GITHUB_CLIENT_ID / _SECRET for GitHub sign-in, or COALFACE_DEV_USER=<login> for development.`);
+Server env: LAMPROOM_GITHUB_CLIENT_ID / _SECRET for GitHub sign-in, or LAMPROOM_DEV_USER=<login> for development.`);
   }
 } catch (e) {
   if (e instanceof ClientError) die(e.message);

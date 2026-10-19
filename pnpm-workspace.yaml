@@ -1,2 +1,8 @@
 packages:
   - packages/*
+
+# Build scripts: esbuild needs its postinstall; the Astryx packages are used prebuilt.
+allowBuilds:
+  esbuild: true
+  "@astryxdesign/cli": false
+  "@astryxdesign/core": false

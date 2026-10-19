@@ -1,7 +1,7 @@
 // SessionStart hook: inject the current coal face into context so the agent
 // never has to ask for it. Output is the hook JSON contract.
 
-import { Client, ClientError, resolveProject, resolveServer, tokenFor } from '@coalface/client';
+import { Client, ClientError, resolveProject, resolveServer, tokenFor } from '@lamproom/client';
 
 let input = '';
 process.stdin.setEncoding('utf8');
@@ -22,15 +22,15 @@ try {
   const p = await resolveProject(client, cwd);
   const status = await client.status(p.id);
   context =
-    `Coalface workflow tracker is active for ${p.owner}/${p.name} (${serverUrl}).\n\n${status}\n\n` +
-    'To continue working the coal face, invoke the /coalface:mine skill. ' +
-    'Report every workflow state change through the coalface tracker tools.';
+    `Lamproom is tracking ${p.owner}/${p.name} (${serverUrl}).\n\n${status}\n\n` +
+    'To continue working the coal face, invoke the /lamproom:mine skill. ' +
+    'Report every state change on a seam through the Lamproom tools.';
 } catch (e) {
   const why = e instanceof ClientError ? e.message : e instanceof Error ? e.message : String(e);
   context =
-    `Coalface workflow tracker is installed but not reachable for this project: ${why}. ` +
-    'If the user wants to track work, tell them to run "coalface serve", "coalface login" and "coalface init" in a terminal, ' +
-    'then restart the session. When the user gives a goal and the tracker is reachable, invoke the /coalface:mine skill with that goal as its argument.';
+    `Lamproom is installed but not reachable for this project: ${why}. ` +
+    'If the user wants to track work, tell them to run "lamproom serve", "lamproom login" and "lamproom init" in a terminal, ' +
+    'then restart the session. When the user gives a goal and the tracker is reachable, invoke the /lamproom:mine skill with that goal as its argument.';
 }
 
 process.stdout.write(

@@ -1,11 +1,11 @@
 ---
 name: mine
-description: Mine the coal face of this project's coalface workflow. Takes the next enabled action, sizes it, implements it or decomposes it, and reports every state change to the tracker. Pass a goal as the argument to start a new workflow.
+description: Mine the coal face of this project's seams in Lamproom. Takes the next enabled action, sizes it, implements it or decomposes it, and reports every state change to the tracker. Pass a goal as the argument to open a new seam.
 ---
 
 # Mining the coal face
 
-You are working a tracked workflow. The tracker is a hypergraph: artefacts are the things delivered, actions are the work that turns input artefacts into output artefacts. You report through the coalface tracker tools (status, inspect, propose, evaluate, claim, release, progress, attach, complete, ask, amend, abandon, restore, reopen, declare). The tracker observes; it does not do work for you.
+You are working a seam that Lamproom tracks. A seam is one goal and everything connected to it; the tracker is a hypergraph: artefacts are the things delivered, actions are the work that turns input artefacts into output artefacts. You report through the Lamproom tools (status, inspect, propose, evaluate, claim, release, progress, attach, complete, ask, amend, abandon, restore, reopen, declare). The tracker observes; it does not do work for you.
 
 Arguments given with this skill: $ARGUMENTS
 
@@ -13,13 +13,13 @@ Titles are one line of plain text. Everything else you write to the tracker, des
 
 ## This run is mocked
 
-Do not create, edit, or run anything in the repository. The point of this exercise is the workflow, not the code. When you "implement" an action, write one to three sentences in a progress note describing what you would have done, then attach a version to each output artefact with a ref like `mock:<short description>`. Spend your effort on decomposition quality, acceptance criteria, and honest sizing.
+Do not create, edit, or run anything in the repository. The point of this exercise is the tracking, not the code. When you "implement" an action, write one to three sentences in a progress note describing what you would have done, then attach a version to each output artefact with a ref like `mock:<short description>`. Spend your effort on decomposition quality, acceptance criteria, and honest sizing.
 
-## Starting a workflow
+## Opening a seam
 
-If you have a goal (from the arguments or the user) that no workflow covers, propose one top-level action for it with no inputs. Its outputs must be concrete deliverable artefacts: almost always a `pull-request` with acceptance criteria, sometimes more than one (a PR and a `document`, say), each with its own criteria. Policy automatically adds the human review step. Size it honestly; a goal is nearly always L or XL.
+If you have a goal (from the arguments or the user) that no seam covers, propose one top-level action for it with no inputs. Its outputs must be concrete deliverable artefacts: almost always a `pull-request` with acceptance criteria, sometimes more than one (a PR and a `document`, say), each with its own criteria. Policy automatically adds the human review step. Size it honestly; a goal is nearly always L or XL.
 
-Each goal is its own workflow, and workflows never share edges: an action's inputs must all come from one workflow. To build on something a finished workflow delivered, propose a **follow-up**: a top-level action (no parent) whose inputs are that workflow's delivered artefacts (the reviewed pull request, the answer). It joins and reopens that workflow rather than starting a new one.
+Each goal is its own seam, and seams never share edges: an action's inputs must all come from one seam. To build on something a finished seam delivered, propose a **follow-up**: a top-level action (no parent) whose inputs are that seam's delivered artefacts (the reviewed pull request, the answer). It joins and reopens that seam rather than starting a new one.
 
 ## The loop
 
@@ -54,9 +54,9 @@ End your turn, with a short summary of what moved and what the humans need to do
 
 - The agent coal face is empty (everything is done, blocked on a human, or waiting for review).
 - You have completed or decomposed four actions in this invocation.
-- You asked a question. Do not answer your own questions. A human answers in the Coalface UI, with `coalface answer`, or by replying in chat. If they reply in chat, record their reply with the `answer` tool, which logs it on their behalf, then carry on.
+- You asked a question. Do not answer your own questions. A human answers in the Lamproom UI, with `lamproom answer`, or by replying in chat. If they reply in chat, record their reply with the `answer` tool, which logs it on their behalf, then carry on.
 
-Pull-request reviews cannot be relayed from chat. If the human says "looks good" in chat, ask them to accept it in the UI or run `coalface review <artefactId> accept`.
+Pull-request reviews cannot be relayed from chat. If the human says "looks good" in chat, ask them to accept it in the UI or run `lamproom review <artefactId> accept`.
 
 Before stopping, release any action you still hold unless you are mid-implementation and will continue next turn.
 
@@ -65,4 +65,4 @@ Before stopping, release any action you still hold unless you are mid-implementa
 - An action held by another agent: do not take it unless the user confirms that session is gone; then claim with force.
 - A rejected output (status rework): inspect the artefact to read the rejection reasons, claim the action, fix, attach a new version, complete again.
 - The tracker returns an error: read it, call status, and correct course. Never retry the same call unchanged.
-- The tracker says it is not reachable or not signed in: stop and tell the user to run `coalface serve`, `coalface login` and `coalface init` in a terminal, then restart the session. Do not improvise tracking in files.
+- The tracker says it is not reachable or not signed in: stop and tell the user to run `lamproom serve`, `lamproom login` and `lamproom init` in a terminal, then restart the session. Do not improvise tracking in files.

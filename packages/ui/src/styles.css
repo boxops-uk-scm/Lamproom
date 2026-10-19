@@ -1,6 +1,6 @@
 /* ---- tokens -------------------------------------------------------------- */
 
-/* Coalface's own names are aliases onto the Astryx tokens, which the Boxops
+/* Lamproom's own names are aliases onto the Astryx tokens, which the Boxops
    theme fills in (src/theme/boxopsTheme.tsx). They are declared on the theme
    wrapper rather than :root so they resolve from the first paint; Astryx only
    stamps <html> after mount. Light and dark are inside the tokens already. */
@@ -24,7 +24,7 @@
   --accent: var(--color-accent);
   --accent-text: var(--color-on-accent);
 
-  /* Workflow states, in Boxops hues. Keep in step with STATUS_HUE in nodes.tsx. */
+  /* Seam states, in Boxops hues. Keep in step with STATUS_HUE in nodes.tsx. */
   --c-ready: var(--color-icon-orange);
   --c-rework: var(--color-error);
   --c-active: var(--color-accent);
@@ -60,16 +60,16 @@ body {
   font-size: 13px;
   line-height: 1.45;
 }
-.cf-muted {
+.lr-muted {
   color: var(--text-muted);
 }
-.cf-spacer {
+.lr-spacer {
   flex: 1;
 }
-.cf-icon {
+.lr-icon {
   flex: none;
 }
-.cf-icon.is-down {
+.lr-icon.is-down {
   transform: rotate(90deg);
 }
 
@@ -92,7 +92,7 @@ body {
 .as-rejected { --as: var(--c-rework); --as-ring: var(--c-rework); }
 .as-invalidated { --as: var(--c-blocked); --as-ring: var(--c-blocked); }
 
-.cf-dot {
+.lr-dot {
   display: inline-block;
   width: 8px;
   height: 8px;
@@ -100,7 +100,7 @@ body {
   background: var(--st, var(--c-blocked));
   flex: none;
 }
-.cf-adot {
+.lr-adot {
   display: inline-block;
   width: 9px;
   height: 9px;
@@ -109,23 +109,23 @@ body {
   box-shadow: inset 0 0 0 1.5px var(--as-ring, var(--border-strong));
   flex: none;
 }
-.st-active .cf-dot {
+.st-active .lr-dot {
   box-shadow: 0 0 0 0 var(--st);
-  animation: cf-pulse 1.6s ease-out infinite;
+  animation: lr-pulse 1.6s ease-out infinite;
 }
-@keyframes cf-pulse {
+@keyframes lr-pulse {
   0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--st) 55%, transparent); }
   100% { box-shadow: 0 0 0 7px transparent; }
 }
 
 /* ---- layout -------------------------------------------------------------- */
 
-.cf-app {
+.lr-app {
   display: grid;
   grid-template-rows: 52px 1fr 44px;
   height: 100%;
 }
-.cf-top {
+.lr-top {
   display: flex;
   align-items: center;
   gap: 18px;
@@ -133,18 +133,18 @@ body {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
-.cf-brand {
+.lr-brand {
   display: flex;
   align-items: center;
   gap: 9px;
   min-width: 0;
 }
-.cf-brand-name {
+.lr-brand-name {
   font-weight: 700;
   font-size: 14px;
   letter-spacing: 0.01em;
 }
-.cf-logo {
+.lr-logo {
   width: 18px;
   height: 18px;
   border-radius: 5px;
@@ -152,11 +152,11 @@ body {
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
   flex: none;
 }
-.cf-top-project {
+.lr-top-project {
   margin-left: 2px;
   white-space: nowrap;
 }
-.cf-user {
+.lr-user {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -164,7 +164,7 @@ body {
 }
 
 /* Sign-in, loading and the project list: one centred column on the app ground. */
-.cf-gate {
+.lr-gate {
   min-height: 100vh;
   display: grid;
   place-items: center;
@@ -172,13 +172,13 @@ body {
   background: var(--background-app, var(--surface));
   color: var(--text);
 }
-.cf-gate-main {
+.lr-gate-main {
   min-height: 0;
   flex: 1;
   align-content: start;
   padding-top: 48px;
 }
-.cf-gate-card {
+.lr-gate-card {
   width: min(380px, 100%);
   display: flex;
   flex-direction: column;
@@ -190,27 +190,27 @@ body {
   background: var(--surface);
   box-shadow: var(--shadow-lift);
 }
-.cf-logo-lg {
+.lr-logo-lg {
   width: 36px;
   height: 36px;
   border-radius: 9px;
 }
-.cf-projects {
+.lr-projects {
   width: min(560px, 100%);
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-.cf-picker {
+.lr-picker {
   margin-left: 6px;
 }
-.cf-stats {
+.lr-stats {
   display: flex;
   gap: 4px;
   margin-left: auto;
   margin-right: auto;
 }
-.cf-stat {
+.lr-stat {
   display: flex;
   align-items: baseline;
   gap: 6px;
@@ -218,27 +218,27 @@ body {
   border-radius: var(--radius-element);
   --st: var(--text-muted);
 }
-.cf-stat.tone-ready { --st: var(--c-ready); }
-.cf-stat.tone-human { --st: var(--c-human); }
-.cf-stat.tone-active { --st: var(--c-active); }
-.cf-stat.tone-done { --st: var(--c-done); }
-.cf-stat-value {
+.lr-stat.tone-ready { --st: var(--c-ready); }
+.lr-stat.tone-human { --st: var(--c-human); }
+.lr-stat.tone-active { --st: var(--c-active); }
+.lr-stat.tone-done { --st: var(--c-done); }
+.lr-stat-value {
   font-weight: 700;
   font-size: 15px;
   font-variant-numeric: tabular-nums;
   color: var(--st);
 }
-.cf-stat-label {
+.lr-stat-label {
   color: var(--text-muted);
   font-size: 12px;
   white-space: nowrap;
 }
-.cf-tools {
+.lr-tools {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.cf-conn {
+.lr-conn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -250,18 +250,18 @@ body {
   white-space: nowrap;
 }
 
-.cf-main {
+.lr-main {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto var(--panel-w, 380px);
   min-height: 0;
 }
 /* The Astryx resize handle sits in its own column and draws the divider. */
-.cf-splitter {
+.lr-splitter {
   align-self: stretch;
   z-index: 6;
 }
-.cf-canvas {
+.lr-canvas {
   position: relative;
   min-width: 0;
   background: var(--canvas);
@@ -275,7 +275,7 @@ body {
 .react-flow__node {
   cursor: pointer;
 }
-.cf-handle {
+.lr-handle {
   width: 6px;
   height: 6px;
   min-width: 0;
@@ -284,10 +284,10 @@ body {
   background: transparent;
   pointer-events: none;
 }
-.cf-enter {
-  animation: cf-enter 420ms ease-out both;
+.lr-enter {
+  animation: lr-enter 420ms ease-out both;
 }
-@keyframes cf-enter {
+@keyframes lr-enter {
   from { opacity: 0; transform: translateY(6px) scale(0.98); }
   to { opacity: 1; transform: none; }
 }
@@ -295,7 +295,7 @@ body {
 /* A node's edge carries its state: the border is the status hue itself, the
    same as an action's strip and an artefact's glyph and dot. Hover and
    selection recolour the whole outline, strip included. */
-.cf-node {
+.lr-node {
   --node-edge: var(--border);
   position: relative;
   height: 100%;
@@ -305,20 +305,20 @@ body {
   box-shadow: var(--shadow);
   transition: box-shadow 160ms, border-color 160ms, transform 160ms;
 }
-.cf-node.is-selected {
+.lr-node.is-selected {
   --node-edge-live: var(--edge-hot);
   box-shadow: var(--shadow-lift), 0 0 0 2px color-mix(in srgb, var(--edge-hot) 20%, transparent);
 }
 /* Hover lifts and pulls the whole outline, strip included, toward the text
    colour: deeper in light mode, lighter in dark. */
-.react-flow__node:hover .cf-node:not(.is-selected) {
+.react-flow__node:hover .lr-node:not(.is-selected) {
   --node-edge-live: color-mix(in srgb, var(--node-edge) 75%, var(--text));
   box-shadow: var(--shadow-lift);
 }
 
 /* The status strip is the left border itself, so it meets the rest of the
    edge through the corner curve with nothing painted over or clipped. */
-.cf-action {
+.lr-action {
   --node-edge: var(--st, var(--border));
   display: flex;
   flex-direction: column;
@@ -328,29 +328,29 @@ body {
   border-radius: var(--radius-container);
   overflow: hidden;
 }
-.cf-action.st-blocked {
+.lr-action.st-blocked {
   background: color-mix(in srgb, var(--text) 3%, var(--surface));
 }
-.cf-action.st-blocked .cf-title,
-.cf-action.st-abandoned .cf-title {
+.lr-action.st-blocked .lr-title,
+.lr-action.st-abandoned .lr-title {
   color: var(--text-muted);
 }
-.cf-action.st-abandoned .cf-title {
+.lr-action.st-abandoned .lr-title {
   text-decoration: line-through;
 }
-.cf-action.st-ready {
+.lr-action.st-ready {
   background: color-mix(in srgb, var(--c-ready) 9%, var(--surface));
 }
-.cf-action.is-human.st-ready {
+.lr-action.is-human.st-ready {
   background: color-mix(in srgb, var(--c-human) 9%, var(--surface));
 }
-.cf-action.st-done {
+.lr-action.st-done {
   opacity: 0.78;
 }
-.cf-action.is-collapsed {
+.lr-action.is-collapsed {
   box-shadow: var(--shadow), 3px 3px 0 -1px var(--surface), 3px 3px 0 0 var(--border);
 }
-.cf-action-head {
+.lr-action-head {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -360,15 +360,15 @@ body {
   color: var(--st, var(--text-muted));
   font-weight: 700;
 }
-.cf-action.st-blocked .cf-action-head,
-.cf-action.st-done .cf-action-head,
-.cf-action.st-abandoned .cf-action-head {
+.lr-action.st-blocked .lr-action-head,
+.lr-action.st-done .lr-action-head,
+.lr-action.st-abandoned .lr-action-head {
   color: var(--text-muted);
 }
-.cf-human-mark {
+.lr-human-mark {
   color: var(--c-human);
 }
-.cf-size {
+.lr-size {
   font-family: var(--mono);
   font-size: 10px;
   font-weight: 700;
@@ -379,7 +379,7 @@ body {
   color: var(--text-muted);
   flex: none;
 }
-.cf-title {
+.lr-title {
   font-weight: 600;
   font-size: 13px;
   line-height: 1.3;
@@ -388,7 +388,7 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.cf-meta {
+.lr-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -397,7 +397,7 @@ body {
   color: var(--text-muted);
   margin-top: auto;
 }
-.cf-meta-item {
+.lr-meta-item {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -406,7 +406,7 @@ body {
   text-overflow: ellipsis;
 }
 
-.cf-artefact {
+.lr-artefact {
   --node-edge: var(--as, var(--border));
   display: flex;
   align-items: center;
@@ -417,23 +417,23 @@ body {
 }
 /* The kind glyph and the dot take the artefact's state hue, like its edge,
    and follow it through hover and selection. */
-.cf-artefact .cf-kind {
+.lr-artefact .lr-kind {
   color: var(--node-edge-live, var(--as, var(--text-muted)));
   flex: none;
 }
-.cf-artefact:not(.as-declared) .cf-adot {
+.lr-artefact:not(.as-declared) .lr-adot {
   background: var(--node-edge-live, var(--as));
   box-shadow: inset 0 0 0 1.5px var(--node-edge-live, var(--as-ring));
 }
-.cf-artefact.as-declared .cf-kind {
+.lr-artefact.as-declared .lr-kind {
   color: var(--text-muted);
 }
-.cf-artefact.as-declared {
+.lr-artefact.as-declared {
   --node-edge: var(--border);
   background: color-mix(in srgb, var(--text) 3%, var(--surface));
   color: var(--text-muted);
 }
-.cf-artefact-title {
+.lr-artefact-title {
   flex: 1;
   min-width: 0;
   white-space: nowrap;
@@ -443,7 +443,7 @@ body {
   font-size: 12.5px;
 }
 
-.cf-group {
+.lr-group {
   position: relative;
   width: 100%;
   height: 100%;
@@ -452,46 +452,46 @@ body {
   border: 1.5px solid var(--group-border);
   transition: border-color 160ms, box-shadow 160ms;
 }
-.cf-group.st-done {
+.lr-group.st-done {
   --group-border: color-mix(in srgb, var(--c-done) 45%, transparent);
   --group-bg: color-mix(in srgb, var(--c-done) 5%, transparent);
 }
-.cf-group.is-selected {
+.lr-group.is-selected {
   border-style: solid;
   border-color: var(--edge-hot);
 }
-.cf-group-head {
+.lr-group-head {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 14px 0 8px;
   height: 40px;
 }
-.cf-group-title {
+.lr-group-title {
   font-weight: 700;
   font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.cf-group-progress {
+.lr-group-progress {
   margin-left: auto;
   display: flex;
   align-items: center;
 }
 
 /* An Astryx progress bar with its count beside it, sized for a header row. */
-.cf-progress {
+.lr-progress {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   flex: none;
 }
-.cf-progress-bar {
+.lr-progress-bar {
   display: block;
   flex: none;
 }
-.cf-progress-n {
+.lr-progress-n {
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
@@ -500,12 +500,12 @@ body {
 
 /* ---- edges --------------------------------------------------------------- */
 
-.react-flow__edge.cf-edge .react-flow__edge-path {
+.react-flow__edge.lr-edge .react-flow__edge-path {
   stroke: var(--edge);
   stroke-width: 1.6;
   transition: stroke 160ms, stroke-width 160ms;
 }
-.react-flow__edge.cf-edge.is-hot .react-flow__edge-path {
+.react-flow__edge.lr-edge.is-hot .react-flow__edge-path {
   stroke: var(--edge-hot);
   stroke-width: 2.2;
 }
@@ -536,7 +536,7 @@ body {
 
 /* ---- canvas overlays ----------------------------------------------------- */
 
-.cf-empty {
+.lr-empty {
   position: absolute;
   inset: 0;
   display: flex;
@@ -544,10 +544,10 @@ body {
   justify-content: center;
   pointer-events: none;
 }
-.cf-empty > * {
+.lr-empty > * {
   pointer-events: auto;
 }
-.cf-history-banner {
+.lr-history-banner {
   position: absolute;
   top: 12px;
   left: 50%;
@@ -561,7 +561,7 @@ body {
   box-shadow: var(--shadow);
   z-index: 4;
 }
-.cf-legend {
+.lr-legend {
   position: absolute;
   left: 12px;
   bottom: 12px;
@@ -576,18 +576,18 @@ body {
   font-size: 11px;
   color: var(--text-muted);
 }
-.cf-legend > span {
+.lr-legend > span {
   display: inline-flex;
   align-items: center;
   gap: 5px;
 }
-.cf-legend .is-human {
+.lr-legend .is-human {
   color: var(--c-human);
 }
 
 /* ---- panel --------------------------------------------------------------- */
 
-.cf-panel {
+.lr-panel {
   background: var(--surface);
   overflow-y: auto;
   overflow-x: hidden;
@@ -595,37 +595,37 @@ body {
   padding: 0 0 24px;
   overflow-wrap: anywhere;
 }
-.cf-panel-empty {
+.lr-panel-empty {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
 }
-.cf-panel-head {
+.lr-panel-head {
   padding: 16px 18px 14px;
   border-bottom: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-.cf-crumbs {
+.lr-crumbs {
   min-width: 0;
 }
-.cf-section {
+.lr-section {
   padding: 14px 18px;
   border-bottom: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-.cf-section-title {
+.lr-section-title {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
-.cf-sub {
+.lr-sub {
   margin-top: 4px;
 }
-.cf-criteria {
+.lr-criteria {
   margin: 0;
   padding-left: 18px;
   display: flex;
@@ -633,27 +633,27 @@ body {
   gap: 3px;
   list-style: disc;
 }
-.cf-criteria li::marker {
+.lr-criteria li::marker {
   color: var(--c-done);
 }
-.cf-criteria.is-unknown li::marker {
+.lr-criteria.is-unknown li::marker {
   color: var(--c-ready);
 }
-.cf-refs {
+.lr-refs {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
-.cf-refs.is-col {
+.lr-refs.is-col {
   flex-direction: column;
   align-items: flex-start;
 }
-.cf-ref {
+.lr-ref {
   display: inline-flex;
   max-width: 100%;
   min-width: 0;
 }
-.cf-log {
+.lr-log {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -661,29 +661,29 @@ body {
   flex-direction: column;
   gap: 6px;
 }
-.cf-log li {
+.lr-log li {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 2px 8px;
   padding-left: 10px;
   border-left: 2px solid var(--border);
 }
-.cf-log li.is-accepted {
+.lr-log li.is-accepted {
   border-left-color: var(--c-done);
 }
-.cf-log li.is-rejected {
+.lr-log li.is-rejected {
   border-left-color: var(--c-rework);
 }
-.cf-log-type {
+.lr-log-type {
   font-family: var(--mono);
   font-size: 11.5px;
 }
-.cf-log-actor {
+.lr-log-actor {
   color: var(--text-faint);
   font-size: 11px;
   text-align: right;
 }
-.cf-log-note {
+.lr-log-note {
   grid-column: 1 / -1;
   color: var(--text-muted);
   white-space: pre-wrap;
@@ -693,7 +693,7 @@ body {
 
 /* Fixed grid columns: the slider track must never change width, or the thumb
    jumps whenever the description at the end changes. */
-.cf-timeline {
+.lr-timeline {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr) minmax(0, 42%);
   align-items: center;
@@ -703,25 +703,25 @@ body {
   border-top: 1px solid var(--border);
   min-width: 0;
 }
-.cf-live {
+.lr-live {
   display: inline-flex;
 }
-.cf-live-dot {
+.lr-live-dot {
   display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--c-blocked);
 }
-.cf-live.is-live .cf-live-dot {
+.lr-live.is-live .lr-live-dot {
   background: var(--c-done);
   --st: var(--c-done);
-  animation: cf-pulse 1.6s ease-out infinite;
+  animation: lr-pulse 1.6s ease-out infinite;
 }
-.cf-tl-slider {
+.lr-tl-slider {
   min-width: 0;
 }
-.cf-tl-label {
+.lr-tl-label {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   column-gap: 10px;
@@ -730,14 +730,14 @@ body {
   color: var(--text-muted);
   font-size: 12px;
 }
-.cf-tl-n {
+.lr-tl-n {
   font-family: var(--mono);
   color: var(--text-faint);
   font-variant-numeric: tabular-nums;
   min-width: 7ch;
   text-align: right;
 }
-.cf-tl-text {
+.lr-tl-text {
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -749,25 +749,25 @@ body {
 /* The frame is the Boxops input frame: 4px radius, subtle border, input
    ground, and on focus an accent border with a 3px inset tinted ring. The
    toolbar sits inside it at the top; the text below resizes like a textarea. */
-.cf-rt {
+.lr-rt {
   position: relative;
   border: 1px solid var(--color-border);
   border-radius: 4px;
-  background: var(--cf-background-input, var(--color-background-surface));
+  background: var(--lr-background-input, var(--color-background-surface));
 }
-.cf-rt:focus-within {
+.lr-rt:focus-within {
   border-color: var(--accent);
-  box-shadow: inset 0 0 0 3px var(--cf-accent-subtle);
+  box-shadow: inset 0 0 0 3px var(--lr-accent-subtle);
 }
-.cf-rt.is-disabled {
+.lr-rt.is-disabled {
   background: var(--surface-2);
 }
-.cf-rt-body {
+.lr-rt-body {
   position: relative;
 }
-.cf-rt-editor {
+.lr-rt-editor {
   box-sizing: border-box;
-  min-height: calc(var(--cf-rt-rows, 3) * 20px + 16px);
+  min-height: calc(var(--lr-rt-rows, 3) * 20px + 16px);
   padding: 8px;
   border: 0;
   border-radius: 0 0 3px 3px;
@@ -781,12 +781,12 @@ body {
   overflow-wrap: anywhere;
   resize: vertical;
 }
-.cf-rt.is-disabled .cf-rt-editor {
+.lr-rt.is-disabled .lr-rt-editor {
   color: var(--text-faint);
   cursor: not-allowed;
   resize: none;
 }
-.cf-rt-placeholder {
+.lr-rt-placeholder {
   position: absolute;
   top: 8px;
   left: 8px;
@@ -798,55 +798,55 @@ body {
   white-space: pre-wrap;
   overflow: hidden;
 }
-.cf-rt-p,
-.cf-rt-quote,
-.cf-rt-ul,
-.cf-rt-ol,
-.cf-rt-code,
-.cf-rt-h1,
-.cf-rt-h2,
-.cf-rt-h3,
-.cf-rt-h4,
-.cf-rt-h5,
-.cf-rt-h6 {
+.lr-rt-p,
+.lr-rt-quote,
+.lr-rt-ul,
+.lr-rt-ol,
+.lr-rt-code,
+.lr-rt-h1,
+.lr-rt-h2,
+.lr-rt-h3,
+.lr-rt-h4,
+.lr-rt-h5,
+.lr-rt-h6 {
   margin: 0 0 0.5em;
 }
-.cf-rt-editor > :last-child {
+.lr-rt-editor > :last-child {
   margin-bottom: 0;
 }
-.cf-rt-h1 { font-size: 1.25em; font-weight: 700; }
-.cf-rt-h2 { font-size: 1.15em; font-weight: 700; }
-.cf-rt-h3, .cf-rt-h4, .cf-rt-h5, .cf-rt-h6 { font-size: 1.05em; font-weight: 600; }
+.lr-rt-h1 { font-size: 1.25em; font-weight: 700; }
+.lr-rt-h2 { font-size: 1.15em; font-weight: 700; }
+.lr-rt-h3, .lr-rt-h4, .lr-rt-h5, .lr-rt-h6 { font-size: 1.05em; font-weight: 600; }
 /* Markers are set outright: list-style-type inherits, and an Astryx
    ancestor turns it off. */
-.cf-rt-ul,
-.cf-rt-ol {
+.lr-rt-ul,
+.lr-rt-ol {
   padding-left: 1.5em;
   list-style: disc outside;
 }
-.cf-rt-ol {
+.lr-rt-ol {
   list-style: decimal outside;
 }
-.cf-rt-li-nested > .cf-rt-ul {
+.lr-rt-li-nested > .lr-rt-ul {
   list-style: circle outside;
 }
-.cf-rt-li-nested {
+.lr-rt-li-nested {
   list-style: none;
 }
-.cf-rt-li-nested > .cf-rt-ul,
-.cf-rt-li-nested > .cf-rt-ol {
+.lr-rt-li-nested > .lr-rt-ul,
+.lr-rt-li-nested > .lr-rt-ol {
   margin: 0;
 }
-.cf-rt-li-checked,
-.cf-rt-li-unchecked {
+.lr-rt-li-checked,
+.lr-rt-li-unchecked {
   position: relative;
   list-style: none;
   margin-left: -1.5em;
   padding-left: 1.5em;
   cursor: pointer;
 }
-.cf-rt-li-checked::before,
-.cf-rt-li-unchecked::before {
+.lr-rt-li-checked::before,
+.lr-rt-li-unchecked::before {
   content: '';
   position: absolute;
   left: 0;
@@ -857,20 +857,20 @@ body {
   border-radius: 3px;
   background: var(--surface);
 }
-.cf-rt-li-checked {
+.lr-rt-li-checked {
   color: var(--text-muted);
   text-decoration: line-through;
 }
-.cf-rt-li-checked::before {
+.lr-rt-li-checked::before {
   background: var(--accent);
   border-color: var(--accent);
 }
-.cf-rt-quote {
+.lr-rt-quote {
   padding-left: 10px;
   border-left: 3px solid var(--border-strong);
   color: var(--text-muted);
 }
-.cf-rt-code {
+.lr-rt-code {
   display: block;
   padding: 8px 10px;
   border-radius: var(--radius-inner);
@@ -880,19 +880,19 @@ body {
   white-space: pre-wrap;
   tab-size: 2;
 }
-.cf-rt-icode {
+.lr-rt-icode {
   padding: 1px 4px;
   border-radius: 3px;
   background: var(--surface-2);
   font-family: var(--mono);
   font-size: 0.92em;
 }
-.cf-rt-bold { font-weight: 700; }
-.cf-rt-italic { font-style: italic; }
-.cf-rt-strike { text-decoration: line-through; }
-.cf-rt-underline { text-decoration: underline; }
-.cf-rt-highlight { background: var(--c-ready-bg); }
-.cf-rt-link {
+.lr-rt-bold { font-weight: 700; }
+.lr-rt-italic { font-style: italic; }
+.lr-rt-strike { text-decoration: line-through; }
+.lr-rt-underline { text-decoration: underline; }
+.lr-rt-highlight { background: var(--c-ready-bg); }
+.lr-rt-link {
   color: var(--accent-text);
   text-decoration: underline;
   cursor: text;
@@ -900,7 +900,7 @@ body {
 /* The toolbar holds the flat Boxops toggles: transparent at rest, a 5% ink
    wash on hover, accent ink on the accent tint when pressed; hairlines part
    the text, link and block groups. */
-.cf-rt-toolbar {
+.lr-rt-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -908,17 +908,17 @@ body {
   padding: 4px 6px;
   border-bottom: 1px solid var(--color-border);
 }
-.cf-rt-group {
+.lr-rt-group {
   display: flex;
   gap: 2px;
 }
-.cf-rt-sep {
+.lr-rt-sep {
   width: 1px;
   height: 16px;
   margin: 0 4px;
   background: var(--color-border);
 }
-.cf-rt-toolbar .astryx-toggle-button {
+.lr-rt-toolbar .astryx-toggle-button {
   min-width: 28px;
   height: 28px;
   padding: 0;
@@ -928,37 +928,37 @@ body {
   box-shadow: none;
   color: var(--text);
 }
-.cf-rt-toolbar .astryx-toggle-button:enabled:hover {
+.lr-rt-toolbar .astryx-toggle-button:enabled:hover {
   background: var(--color-overlay-hover);
 }
-.cf-rt-toolbar .astryx-toggle-button:enabled:active {
+.lr-rt-toolbar .astryx-toggle-button:enabled:active {
   background: var(--color-overlay-pressed);
 }
-.cf-rt-toolbar .astryx-toggle-button[data-is-pressed='true'] {
+.lr-rt-toolbar .astryx-toggle-button[data-is-pressed='true'] {
   background: var(--color-accent-muted);
   color: var(--accent);
 }
-.cf-rt-toolbar .astryx-toggle-button[data-is-pressed='true']:enabled:hover {
-  background: var(--cf-accent-selected-hover, var(--color-accent-muted));
+.lr-rt-toolbar .astryx-toggle-button[data-is-pressed='true']:enabled:hover {
+  background: var(--lr-accent-selected-hover, var(--color-accent-muted));
 }
-.cf-rt-toolbar .astryx-toggle-button:disabled {
+.lr-rt-toolbar .astryx-toggle-button:disabled {
   color: var(--text-faint);
 }
-.cf-rt-glyph {
+.lr-rt-glyph {
   font-family: var(--font);
   font-size: 13px;
   line-height: 1;
   font-weight: 600;
 }
-b.cf-rt-glyph {
+b.lr-rt-glyph {
   font-weight: 800;
 }
-.cf-rt-linkform {
+.lr-rt-linkform {
   min-width: 0;
 }
 
 /* The goal form fills its dialog: the fields scroll, the buttons stay put. */
-.cf-goal-form {
+.lr-goal-form {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -967,7 +967,7 @@ b.cf-rt-glyph {
 /* The dialog's header and footer add their own inner inset to the dialog
    padding; the content region does not inside a dialog, so give it the same
    inset to keep the fields flush with the title and the buttons. */
-.cf-goal-form > .astryx-layout-content {
+.lr-goal-form > .astryx-layout-content {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
@@ -975,28 +975,28 @@ b.cf-rt-glyph {
 }
 /* The dialog's two actions as one joined control across its full width. A
    grid cell stretches the group whatever display Astryx gives it. */
-.cf-goal-actions {
+.lr-goal-actions {
   display: grid;
 }
-.cf-goal-actions .astryx-button-group {
+.lr-goal-actions .astryx-button-group {
   display: flex;
   width: 100%;
   min-width: 0;
 }
 /* Only the buttons share the width: a tooltip's hidden nodes also live in
    the group and must keep their own display. */
-.cf-goal-actions .astryx-button-group > .astryx-button,
-.cf-goal-actions .astryx-button-group > :has(> .astryx-button) {
+.lr-goal-actions .astryx-button-group > .astryx-button,
+.lr-goal-actions .astryx-button-group > :has(> .astryx-button) {
   flex: 1 1 0;
   min-width: 0;
 }
-.cf-goal-actions .astryx-button {
+.lr-goal-actions .astryx-button {
   width: 100%;
 }
 /* No divider between the halves: the primary edge already marks the seam.
    The :not(#\#) run matches the specificity StyleX gives the group's rule. */
-.cf-goal-actions .astryx-button-group > .astryx-button:not(#\#):not(#\#):not(#\#),
-.cf-goal-actions .astryx-button-group > :has(> .astryx-button) > .astryx-button:not(#\#):not(#\#):not(#\#) {
+.lr-goal-actions .astryx-button-group > .astryx-button:not(#\#):not(#\#):not(#\#),
+.lr-goal-actions .astryx-button-group > :has(> .astryx-button) > .astryx-button:not(#\#):not(#\#):not(#\#) {
   border-inline-start-width: 0;
   border-inline-end-width: 0;
 }
@@ -1004,29 +1004,29 @@ b.cf-rt-glyph {
 /* An artefact's versions: a split button (open the chosen one, pick another)
    over a line of who and when. The halves sit a hairline apart with their
    inner corners squared, as Boxops joins buttons. */
-.cf-versions {
+.lr-versions {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
 }
-.cf-split {
+.lr-split {
   display: inline-flex;
   gap: 2px;
 }
 /* Both halves carry the plain button class, so they are told apart by order;
    the menu's hidden popover follows them as a later sibling. */
-.cf-split > .astryx-button:first-child:not(#\#):not(#\#):not(#\#) {
+.lr-split > .astryx-button:first-child:not(#\#):not(#\#):not(#\#) {
   border-start-end-radius: 0;
   border-end-end-radius: 0;
 }
-.cf-split > .astryx-button:nth-child(2):not(#\#):not(#\#):not(#\#) {
+.lr-split > .astryx-button:nth-child(2):not(#\#):not(#\#):not(#\#) {
   border-start-start-radius: 0;
   border-end-start-radius: 0;
 }
 
 /* Zoom controls in the canvas corner, stacked above the minimap. */
-.cf-controls {
+.lr-controls {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1034,7 +1034,7 @@ b.cf-rt-glyph {
 }
 
 /* The goal's deliverables: a short list, each row opening its own composer. */
-.cf-dl {
+.lr-dl {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1044,23 +1044,23 @@ b.cf-rt-glyph {
 [data-astryx-theme] :is(.astryx-text-input, .astryx-text-area, .astryx-selector[data-variant='input'], .astryx-multi-selector[data-variant='input'], .astryx-number-input) {
   border-radius: 4px;
   border-color: var(--color-border);
-  background-color: var(--cf-background-input, var(--color-background-surface));
+  background-color: var(--lr-background-input, var(--color-background-surface));
 }
 [data-astryx-theme] :is(.astryx-text-input, .astryx-text-area, .astryx-selector[data-variant='input'], .astryx-multi-selector[data-variant='input'], .astryx-number-input):focus-within {
   border-color: var(--accent);
-  box-shadow: inset 0 0 0 3px var(--cf-accent-subtle);
+  box-shadow: inset 0 0 0 3px var(--lr-accent-subtle);
   outline: none;
 }
 
 /* Rendered rich text: Astryx Markdown, tightened for the panel. */
-.cf-rich {
+.lr-rich {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.cf-rich-muted {
+.lr-rich-muted {
   color: var(--text-muted);
 }
-.cf-question {
+.lr-question {
   padding: 8px 12px;
   border-left: 3px solid var(--c-human);
   border-radius: 0 var(--radius-inner) var(--radius-inner) 0;
@@ -1070,33 +1070,33 @@ b.cf-rt-glyph {
 /* ---- small screens ------------------------------------------------------- */
 
 @media (max-width: 900px) {
-  .cf-main {
+  .lr-main {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr auto;
   }
-  .cf-panel {
+  .lr-panel {
     border-left: none;
     border-top: 1px solid var(--border);
     max-height: 45vh;
   }
-  .cf-splitter {
+  .lr-splitter {
     display: none;
   }
-  .cf-stats {
+  .lr-stats {
     display: none;
   }
 }
 
-/* ---- workflow frames ----------------------------------------------------- */
+/* ---- seam frames ----------------------------------------------------- */
 
-.wf-done { --st: var(--c-done); }
-.wf-abandoned { --st: var(--c-abandoned); }
-.wf-active { --st: var(--c-active); }
-.wf-waiting { --st: var(--c-human); }
-.wf-ready { --st: var(--c-ready); }
-.wf-blocked { --st: var(--c-blocked); }
+.seam-done { --st: var(--c-done); }
+.seam-abandoned { --st: var(--c-abandoned); }
+.seam-active { --st: var(--c-active); }
+.seam-waiting { --st: var(--c-human); }
+.seam-ready { --st: var(--c-ready); }
+.seam-blocked { --st: var(--c-blocked); }
 
-.cf-frame {
+.lr-frame {
   position: relative;
   width: 100%;
   height: 100%;
@@ -1106,20 +1106,20 @@ b.cf-rt-glyph {
   box-shadow: var(--shadow);
   transition: border-color 160ms, box-shadow 160ms, background 160ms;
 }
-.cf-frame.is-focused {
+.lr-frame.is-focused {
   border-color: var(--accent);
   box-shadow: var(--shadow-lift), 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
 }
-.cf-frame.is-selected:not(.is-focused) {
+.lr-frame.is-selected:not(.is-focused) {
   border-color: var(--edge-hot);
 }
-.cf-frame.wf-done {
+.lr-frame.seam-done {
   border-color: color-mix(in srgb, var(--c-done) 45%, var(--border-strong));
 }
-.cf-frame.is-collapsed {
+.lr-frame.is-collapsed {
   background: var(--surface);
 }
-.cf-frame-head {
+.lr-frame-head {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1129,18 +1129,18 @@ b.cf-rt-glyph {
   border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   border-radius: 18px 18px 0 0;
 }
-.cf-frame.is-collapsed .cf-frame-head {
+.lr-frame.is-collapsed .lr-frame-head {
   border-bottom: none;
   height: 50px;
 }
-.cf-frame-head:active {
+.lr-frame-head:active {
   cursor: grabbing;
 }
-.cf-grip {
+.lr-grip {
   color: var(--text-faint);
   flex: none;
 }
-.cf-frame-title {
+.lr-frame-title {
   font-weight: 700;
   font-size: 14px;
   white-space: nowrap;
@@ -1149,13 +1149,13 @@ b.cf-rt-glyph {
   min-width: 0;
   flex: 1;
 }
-.cf-frame-tools {
+.lr-frame-tools {
   display: flex;
   gap: 2px;
   flex: none;
   margin-left: 2px;
 }
-.cf-frame-body {
+.lr-frame-body {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -1163,7 +1163,7 @@ b.cf-rt-glyph {
   padding: 0 14px 12px 38px;
   font-size: 12px;
 }
-.cf-frame-body .cf-needs-you {
+.lr-frame-body .lr-needs-you {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1171,28 +1171,28 @@ b.cf-rt-glyph {
   font-weight: 600;
 }
 
-/* Dim everything outside the focused workflow. Opacity only: the wrapper's
+/* Dim everything outside the focused seam. Opacity only: the wrapper's
    transform is its position and must never be touched by CSS. */
-.react-flow__node.cf-dim {
+.react-flow__node.lr-dim {
   opacity: 0.28;
   transition: opacity 200ms;
 }
-.react-flow__node.cf-dim:hover {
+.react-flow__node.lr-dim:hover {
   opacity: 0.7;
 }
 
-/* Deliverable artefacts mark the end of a workflow. */
-.cf-artefact.is-finish {
+/* Deliverable artefacts mark the end of a seam. */
+.lr-artefact.is-finish {
   box-shadow: var(--shadow), 0 0 0 2px var(--surface), 0 0 0 3.5px var(--as-ring, var(--border-strong));
   font-weight: 600;
 }
 
 /* ---- pinned frames: locked in place, not draggable ------------------------ */
 
-.cf-frame.is-pinned .cf-frame-head {
+.lr-frame.is-pinned .lr-frame-head {
   cursor: default;
 }
-.cf-frame.is-pinned .cf-grip {
+.lr-frame.is-pinned .lr-grip {
   color: var(--accent);
 }
 
@@ -1205,20 +1205,20 @@ b.cf-rt-glyph {
 .tone-submitted { --st: var(--c-submitted); }
 .tone-done { --st: var(--c-done); }
 
-.cf-board {
+.lr-board {
   position: absolute;
   inset: 0;
   overflow: auto;
   padding: 0 16px 28px;
 }
-.cf-board-grid {
+.lr-board-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(188px, 1fr));
   column-gap: 10px;
   align-items: start;
   min-width: 1200px;
 }
-.cf-col-head {
+.lr-col-head {
   position: sticky;
   top: 0;
   z-index: 3;
@@ -1235,14 +1235,14 @@ b.cf-rt-glyph {
   font-weight: 700;
   color: var(--text-muted);
 }
-.cf-col-n {
+.lr-col-n {
   margin-left: auto;
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   font-size: 12px;
   color: var(--st);
 }
-.cf-cell {
+.lr-cell {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1252,21 +1252,21 @@ b.cf-rt-glyph {
   border-radius: var(--radius-container);
   background: color-mix(in srgb, var(--text) 3.5%, transparent);
 }
-.cf-cell.is-empty {
+.lr-cell.is-empty {
   background: transparent;
   border: 1px dashed color-mix(in srgb, var(--text) 10%, transparent);
 }
-/* A card is an Astryx ClickableCard with Coalface's status bar on its left
+/* A card is an Astryx ClickableCard with Lamproom's status bar on its left
    edge and a selection ring; the wrapper draws both. */
-.cf-card {
+.lr-card {
   position: relative;
   border-radius: var(--radius-container);
   overflow: hidden;
   box-shadow: var(--shadow);
-  animation: cf-enter 320ms ease-out both;
+  animation: lr-enter 320ms ease-out both;
   transition: box-shadow 160ms;
 }
-.cf-card::before {
+.lr-card::before {
   content: "";
   position: absolute;
   left: 0;
@@ -1277,30 +1277,30 @@ b.cf-rt-glyph {
   z-index: 1;
   pointer-events: none;
 }
-.cf-card:hover {
+.lr-card:hover {
   box-shadow: var(--shadow-lift);
 }
-.cf-card.is-selected {
+.lr-card.is-selected {
   box-shadow: var(--shadow-lift), 0 0 0 2px var(--edge-hot);
 }
-.cf-card.st-done {
+.lr-card.st-done {
   opacity: 0.78;
 }
-.cf-card-body {
+.lr-card-body {
   display: flex;
   flex-direction: column;
   gap: 3px;
   padding-left: 4px;
   text-align: left;
 }
-.cf-card.st-blocked .cf-card-title,
-.cf-card.st-abandoned .cf-card-title {
+.lr-card.st-blocked .lr-card-title,
+.lr-card.st-abandoned .lr-card-title {
   color: var(--text-muted);
 }
-.cf-card.st-abandoned .cf-card-title {
+.lr-card.st-abandoned .lr-card-title {
   text-decoration: line-through;
 }
-.cf-card-head {
+.lr-card-head {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1310,13 +1310,13 @@ b.cf-rt-glyph {
   font-weight: 700;
   color: var(--st, var(--text-muted));
 }
-.cf-card.st-blocked .cf-card-head,
-.cf-card.st-done .cf-card-head,
-.cf-card.st-abandoned .cf-card-head {
+.lr-card.st-blocked .lr-card-head,
+.lr-card.st-done .lr-card-head,
+.lr-card.st-abandoned .lr-card-head {
   color: var(--text-muted);
 }
-/* Which workflow the card belongs to; the flag carries the workflow's status colour. */
-.cf-card-wf {
+/* Which seam the card belongs to; the flag carries the seam's status colour. */
+.lr-card-seam {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1325,28 +1325,28 @@ b.cf-rt-glyph {
   font-weight: 600;
   color: var(--text-muted);
 }
-.cf-card-wf svg {
+.lr-card-seam svg {
   flex: none;
   color: var(--st, var(--text-muted));
 }
-.cf-card-wf-title {
+.lr-card-seam-title {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.cf-card-crumbs {
+.lr-card-crumbs {
   font-size: 10.5px;
   color: var(--text-faint);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.cf-card-title {
+.lr-card-title {
   font-weight: 600;
   font-size: 12.5px;
   line-height: 1.3;
 }
-.cf-card-meta {
+.lr-card-meta {
   display: flex;
   min-width: 0;
   font-size: 11px;

@@ -1,8 +1,8 @@
-// Projects, streams and events. One stream per workflow: events carry a
+// Projects, streams and events. One stream per seam: events carry a
 // global seq (commit order across the project) and a dense per-stream rev;
 // each stream keeps a snapshot of its projected state and the summary the
 // overview needs, updated in the same transaction as the append, so reading
-// the project never replays anything. Scrubbing a workflow's history reads
+// the project never replays anything. Scrubbing a seam's history reads
 // that stream's events alone.
 
 import {
@@ -10,13 +10,13 @@ import {
   extend,
   project,
   upcast,
-  workflows,
+  seams,
   type Event,
   type Policy,
   type State,
-  type Workflow,
-} from '@coalface/core';
-import { DEFAULT_POLICY, mergePolicy } from '@coalface/core';
+  type Seam,
+} from '@lamproom/core';
+import { DEFAULT_POLICY, mergePolicy } from '@lamproom/core';
 import { randomUUID } from 'node:crypto';
 import type { Db, Row } from './db.js';
 
@@ -36,7 +36,7 @@ export interface StreamSummary {
   headSeq: number;
   createdSeq: number;
   title: string;
-  status: Workflow['status'];
+  status: Seam['status'];
   done: number;
   total: number;
   humanQueue: number;
@@ -196,7 +196,7 @@ export class Store {
   /**
    * The one stream the given entity ids live in; undefined when none exists
    * yet. Throws ConflictError when they span streams, which would be an edge
-   * between workflows.
+   * between seams.
    */
   async resolveStream(projectId: string, ids: string[]): Promise<string | undefined> {
     const found = new Set<string>();
@@ -204,7 +204,7 @@ export class Store {
       const s = await this.entityStream(projectId, id);
       if (s) found.add(s);
     }
-    if (found.size > 1) throw new ConflictError(`ids span ${found.size} workflows; an action cannot join workflows`);
+    if (found.size > 1) throw new ConflictError(`ids span ${found.size} seams; an action cannot join seams`);
     return [...found][0];
   }
 
@@ -393,7 +393,7 @@ function rowToSummary(r: Row): StreamSummary {
     headSeq: Number(r.head_seq),
     createdSeq: Number(r.created_seq),
     title: String(r.title),
-    status: String(r.status) as Workflow['status'],
+    status: String(r.status) as Seam['status'],
     done: Number(r.done),
     total: Number(r.total),
     humanQueue: Number(r.human_queue),
@@ -405,7 +405,7 @@ function rowToEvent(r: Row): Event {
 }
 
 function summarise(state: State, streamId: string): Pick<StreamSummary, 'title' | 'status' | 'done' | 'total' | 'humanQueue'> {
-  const w = workflows(state).list.find((x) => x.id === streamId) ?? workflows(state).list[0];
+  const w = seams(state).list.find((x) => x.id === streamId) ?? seams(state).list[0];
   if (!w) return { title: streamId, status: 'blocked', done: 0, total: 0, humanQueue: 0 };
   return { title: w.title, status: w.status, done: w.done, total: w.total, humanQueue: w.humanQueue };
 }

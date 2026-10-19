@@ -1,9 +1,9 @@
 {
-  "name": "@coalface/client",
+  "name": "@lamproom/client",
   "version": "0.2.0",
   "type": "module",
   "private": true,
-  "description": "Talks to a coalface server from a terminal or the plugin: config, sign-in, project resolution, API calls",
+  "description": "Talks to a Lamproom server from a terminal or the plugin: config, sign-in, project resolution, API calls",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -11,7 +11,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@coalface/core": "workspace:*"
+    "@lamproom/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

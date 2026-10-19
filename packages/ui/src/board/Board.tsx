@@ -1,11 +1,11 @@
-// Kanban view of the same state: every leaf action across all workflows is a
+// Kanban view of the same state: every leaf action across all seams is a
 // card, in columns by what the action is waiting for, merged across
-// workflows. Groups are not cards; their children are, each naming its
-// workflow and the chain of parents. Focus filters the board to the chosen
-// workflows.
+// seams. Groups are not cards; their children are, each naming its
+// seam and the chain of parents. Focus filters the board to the chosen
+// seams.
 
-import type { ActionState, State, Workflow } from '@coalface/core';
-import { summary, workflows } from '@coalface/core';
+import type { ActionState, State, Seam } from '@lamproom/core';
+import { summary, seams } from '@lamproom/core';
 import { ClickableCard } from '@astryxdesign/core/ClickableCard';
 import { useMemo, useRef } from 'react';
 import { Hint } from '../hint';
@@ -45,18 +45,18 @@ export function columnOf(t: ActionState): Column | undefined {
 
 interface Entry {
   action: ActionState;
-  wf: Workflow;
+  seam: Seam;
 }
 type Cells = Record<Column, Entry[]>;
 
-/** Cards for every shown workflow, in workflow order then by age; the done column newest first. */
-function classify(state: State, wfs: Workflow[]): Cells {
+/** Cards for every shown seam, in seam order then by age; the done column newest first. */
+function classify(state: State, allSeams: Seam[]): Cells {
   const cells: Cells = { blocked: [], ready: [], human: [], active: [], submitted: [], done: [] };
-  for (const wf of wfs) {
-    const acts = wf.actions.map((id) => state.actions[id]!).sort((a, b) => a.seq - b.seq);
+  for (const seam of allSeams) {
+    const acts = seam.actions.map((id) => state.actions[id]!).sort((a, b) => a.seq - b.seq);
     for (const t of acts) {
       const c = columnOf(t);
-      if (c) cells[c].push({ action: t, wf });
+      if (c) cells[c].push({ action: t, seam });
     }
   }
   const finishedAt = (t: ActionState) => t.log[t.log.length - 1]?.seq ?? t.seq;
@@ -66,7 +66,7 @@ function classify(state: State, wfs: Workflow[]): Cells {
 
 interface Props {
   state: State;
-  /** Workflow ids in focus; empty means all. */
+  /** Seam ids in focus; empty means all. */
   focus: string[];
   selected?: string;
   onSelect: (id: string | undefined) => void;
@@ -74,31 +74,31 @@ interface Props {
 }
 
 export function Board({ state, focus, selected, onSelect, onFocus }: Props) {
-  const wfs = useMemo(() => workflows(state), [state]);
-  const shown = useMemo(() => (focus.length ? wfs.list.filter((w) => focus.includes(w.id)) : wfs.list), [wfs, focus]);
+  const allSeams = useMemo(() => seams(state), [state]);
+  const shown = useMemo(() => (focus.length ? allSeams.list.filter((w) => focus.includes(w.id)) : allSeams.list), [allSeams, focus]);
   const cells = useMemo(() => classify(state, shown), [state, shown]);
 
   // A click on the background clears the selection only (a click outside is
   // how the picker's popup closes); a double-click clears the focus.
   return (
-    <div className="cf-board" onClick={() => onSelect(undefined)} onDoubleClick={() => onFocus(undefined)}>
-      <div className="cf-board-grid">
+    <div className="lr-board" onClick={() => onSelect(undefined)} onDoubleClick={() => onFocus(undefined)}>
+      <div className="lr-board-grid">
         {COLUMNS.map((c) => (
           <Hint key={c.id} content={c.hint} placement="below">
-            <div className={cx('cf-col-head', `tone-${c.id}`)}>
-              <span className="cf-dot" />
+            <div className={cx('lr-col-head', `tone-${c.id}`)}>
+              <span className="lr-dot" />
               {c.label}
-              <span className="cf-col-n">{cells[c.id].length}</span>
+              <span className="lr-col-n">{cells[c.id].length}</span>
             </div>
           </Hint>
         ))}
         {COLUMNS.map((c) => (
-          <div key={c.id} className={cx('cf-cell', cells[c.id].length === 0 && 'is-empty')}>
-            {cells[c.id].map(({ action, wf }) => (
+          <div key={c.id} className={cx('lr-cell', cells[c.id].length === 0 && 'is-empty')}>
+            {cells[c.id].map(({ action, seam }) => (
               <Card
                 key={action.id}
                 action={action}
-                wf={wf}
+                seam={seam}
                 state={state}
                 selected={selected === action.id}
                 onSelect={onSelect}
@@ -123,14 +123,14 @@ function cardVariant(t: ActionState): 'default' | 'muted' | 'orange' | 'pink' | 
 
 function Card({
   action: t,
-  wf,
+  seam,
   state,
   selected,
   onSelect,
   onFocus,
 }: {
   action: ActionState;
-  wf: Workflow;
+  seam: Seam;
   state: State;
   selected: boolean;
   onSelect: (id: string) => void;
@@ -138,22 +138,22 @@ function Card({
 }) {
   const human = t.requires?.actorKind === 'human';
   const root = useRef<HTMLDivElement>(null);
-  // The chain of parents below the goal; the goal itself is the workflow line.
+  // The chain of parents below the goal; the goal itself is the seam line.
   const crumbs: string[] = [];
   let cur = t.parent ? state.actions[t.parent] : undefined;
-  while (cur && cur.id !== wf.goal?.id) {
+  while (cur && cur.id !== seam.goal?.id) {
     crumbs.unshift(cur.title);
     cur = cur.parent ? state.actions[cur.parent] : undefined;
   }
   return (
     <>
     <div
-      className={cx('cf-card', `st-${t.status}`, human && 'is-human', selected && 'is-selected')}
+      className={cx('lr-card', `st-${t.status}`, human && 'is-human', selected && 'is-selected')}
       ref={root}
       onDoubleClick={(e) => {
-        // Double-click focuses the card's workflow; with a modifier, adds it to the focus.
+        // Double-click focuses the card's seam; with a modifier, adds it to the focus.
         e.stopPropagation();
-        onFocus(wf.id, e.shiftKey || e.ctrlKey || e.metaKey);
+        onFocus(seam.id, e.shiftKey || e.ctrlKey || e.metaKey);
       }}
     >
       <ClickableCard
@@ -166,29 +166,29 @@ function Card({
           onSelect(t.id);
         }}
       >
-        <span className="cf-card-body">
-          <span className="cf-card-head">
-            <span className="cf-dot" />
-            <span className="cf-status">{human && t.status === 'ready' ? 'Needs you' : STATUS_LABEL[t.status]}</span>
-            <span className="cf-spacer" />
-            {human && <Icon name="person" size={12} className="cf-human-mark" />}
-            {t.size && <span className="cf-size">{t.size}</span>}
+        <span className="lr-card-body">
+          <span className="lr-card-head">
+            <span className="lr-dot" />
+            <span className="lr-status">{human && t.status === 'ready' ? 'Needs you' : STATUS_LABEL[t.status]}</span>
+            <span className="lr-spacer" />
+            {human && <Icon name="person" size={12} className="lr-human-mark" />}
+            {t.size && <span className="lr-size">{t.size}</span>}
           </span>
-          <Hint content={`Workflow: ${wf.title}`}>
-            <span className={cx('cf-card-wf', `wf-${wf.status}`)}>
+          <Hint content={`Seam: ${seam.title}`}>
+            <span className={cx('lr-card-seam', `seam-${seam.status}`)}>
               <Icon name="flag" size={11} />
-              <span className="cf-card-wf-title">{wf.title}</span>
+              <span className="lr-card-seam-title">{seam.title}</span>
             </span>
           </Hint>
           {crumbs.length > 0 && (
             <Hint content={crumbs.join(' / ')}>
-              <span className="cf-card-crumbs">
+              <span className="lr-card-crumbs">
                 {crumbs.join(' / ')}
               </span>
             </Hint>
           )}
-          <span className="cf-card-title">{t.title}</span>
-          <span className="cf-card-meta">{actionMeta(t, { action: t, collapsed: false, childCount: 0, doneCount: 0 })}</span>
+          <span className="lr-card-title">{t.title}</span>
+          <span className="lr-card-meta">{actionMeta(t, { action: t, collapsed: false, childCount: 0, doneCount: 0 })}</span>
         </span>
       </ClickableCard>
     </div>

@@ -1,4 +1,4 @@
-import { isBlank, richTextItems, type ActionState, type Actor, type ArtefactState, type LogEntry, type State } from '@coalface/core';
+import { isBlank, richTextItems, type ActionState, type Actor, type ArtefactState, type LogEntry, type State } from '@lamproom/core';
 import { BreadcrumbItem, Breadcrumbs } from '@astryxdesign/core/Breadcrumbs';
 import { Button } from '@astryxdesign/core/Button';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
@@ -26,10 +26,10 @@ interface Props {
 }
 
 export function Panel({ state, selected: rawSelected, human, live, onSelect, run }: Props) {
-  const selected = rawSelected?.startsWith('wf:') ? rawSelected.slice(3) : rawSelected;
+  const selected = rawSelected?.startsWith('seam:') ? rawSelected.slice(3) : rawSelected;
   if (!selected) {
     return (
-      <aside className="cf-panel cf-panel-empty">
+      <aside className="lr-panel lr-panel-empty">
         <EmptyState isCompact title="Nothing selected" description="Select an action or artefact to see its detail." />
       </aside>
     );
@@ -39,7 +39,7 @@ export function Panel({ state, selected: rawSelected, human, live, onSelect, run
   const a = state.artefacts[selected];
   if (a) return <ArtefactPanel state={state} artefact={a} human={human} live={live} onSelect={onSelect} run={run} />;
   return (
-    <aside className="cf-panel cf-panel-empty">
+    <aside className="lr-panel lr-panel-empty">
       <EmptyState isCompact title="Not yet" description="Nothing here at this point in history." />
     </aside>
   );
@@ -47,8 +47,8 @@ export function Panel({ state, selected: rawSelected, human, live, onSelect, run
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="cf-section">
-      <div className="cf-section-title">
+    <section className="lr-section">
+      <div className="lr-section-title">
         <Heading level={5} color="secondary">
           {title}
         </Heading>
@@ -60,7 +60,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function Sub({ children }: { children: ReactNode }) {
   return (
-    <div className="cf-sub">
+    <div className="lr-sub">
       <Text type="label" color="secondary">
         {children}
       </Text>
@@ -73,14 +73,14 @@ function Ref({ id, state, onSelect }: { id: string; state: State; onSelect: (id:
   const t = state.actions[id];
   if (a) {
     return (
-      <span className={cx('cf-ref', `as-${a.status}`)}>
+      <span className={cx('lr-ref', `as-${a.status}`)}>
         <Token
           size="sm"
           color={ARTEFACT_HUE[a.status]}
           label={a.title}
           description={ARTEFACT_LABEL[a.status]}
           icon={<Icon name={kindIcon(a.kind)} size={12} />}
-          endContent={<span className="cf-adot" />}
+          endContent={<span className="lr-adot" />}
           onClick={() => onSelect(id)}
         />
       </span>
@@ -88,13 +88,13 @@ function Ref({ id, state, onSelect }: { id: string; state: State; onSelect: (id:
   }
   if (t) {
     return (
-      <span className={cx('cf-ref', `st-${t.status}`, t.requires?.actorKind === 'human' && 'is-human')}>
+      <span className={cx('lr-ref', `st-${t.status}`, t.requires?.actorKind === 'human' && 'is-human')}>
         <Token
           size="sm"
           color={actionHue(t)}
           label={t.title}
           description={STATUS_LABEL[t.status]}
-          icon={<span className="cf-dot" />}
+          icon={<span className="lr-dot" />}
           onClick={() => onSelect(id)}
         />
       </span>
@@ -105,7 +105,7 @@ function Ref({ id, state, onSelect }: { id: string; state: State; onSelect: (id:
 
 function Criteria({ items, tone }: { items: string[]; tone?: 'unknown' }) {
   return (
-    <ul className={cx('cf-criteria', tone === 'unknown' && 'is-unknown')}>
+    <ul className={cx('lr-criteria', tone === 'unknown' && 'is-unknown')}>
       {items.map((c, i) => (
         <li key={i}>
           <Text>
@@ -126,16 +126,16 @@ function History({ log }: { log: LogEntry[] }) {
     );
   }
   return (
-    <ol className="cf-log">
+    <ol className="lr-log">
       {[...log].reverse().map((l) => (
         <li key={l.seq}>
-          <span className="cf-log-type">{l.type.replace('action.', '')}</span>
-          <span className="cf-log-actor">
+          <span className="lr-log-type">{l.type.replace('action.', '')}</span>
+          <span className="lr-log-actor">
             {l.actor.name ?? l.actor.id}
             {l.via ? ` via ${l.via.name ?? l.via.id}` : ''}
           </span>
           {l.note && (
-            <span className="cf-log-note">
+            <span className="lr-log-note">
               <RichTextView value={l.note} inline />
             </span>
           )}
@@ -154,7 +154,7 @@ function Breadcrumb({ state, action, onSelect }: { state: State; action: ActionS
   }
   if (!chain.length) return null;
   return (
-    <div className="cf-crumbs">
+    <div className="lr-crumbs">
       <Breadcrumbs variant="supporting" label="Parent actions">
         {chain.map((c) => (
           <BreadcrumbItem key={c.id} isCurrent={false} onClick={() => onSelect(c.id)}>
@@ -189,20 +189,20 @@ function ActionPanel({ state, action: t, human, live, onSelect, run }: { state: 
   const outputsNeedingVersion = t.outputs.map((o) => state.artefacts[o]).filter((a): a is ArtefactState => !!a && !a.versions.length);
 
   return (
-    <aside className="cf-panel">
-      <header className={cx('cf-panel-head', `st-${t.status}`, isHumanAction && 'is-human')}>
+    <aside className="lr-panel">
+      <header className={cx('lr-panel-head', `st-${t.status}`, isHumanAction && 'is-human')}>
         <Breadcrumb state={state} action={t} onSelect={onSelect} />
         <HStack gap={1.5} wrap="wrap" align="center">
           <StatusToken label={STATUS_LABEL[t.status]} hue={actionHue(t)} />
           {t.size && <Token size="sm" color="gray" label={t.size} description="Size" />}
           {isHumanAction && <Token size="sm" color="pink" label="human" icon={<Icon name="person" size={12} />} />}
-          <span className="cf-spacer" />
+          <span className="lr-spacer" />
           <Text type="code" size="sm" color="secondary">
             {t.id}
           </Text>
         </HStack>
         <Heading level={3}>{t.title}</Heading>
-        <RichTextView value={t.description} className="cf-rich-muted" />
+        <RichTextView value={t.description} className="lr-rich-muted" />
         {t.claimedBy && (
           <Text as="p" type="supporting">
             Held by {t.claimedBy.name ?? t.claimedBy.id}
@@ -248,7 +248,7 @@ function ActionPanel({ state, action: t, human, live, onSelect, run }: { state: 
 
       {isAnswer && naked && (
         <Section title="Question">
-          <div className="cf-question">
+          <div className="lr-question">
             <RichTextView value={naked.versions.length ? naked.versions[naked.versions.length - 1]!.ref : naked.title} />
           </div>
           <RichTextEditor
@@ -300,7 +300,7 @@ function ActionPanel({ state, action: t, human, live, onSelect, run }: { state: 
           {t.inputs.length > 0 && (
             <>
               <Sub>Inputs</Sub>
-              <div className="cf-refs">
+              <div className="lr-refs">
                 {t.inputs.map((i) => (
                   <Ref key={i} id={i} state={state} onSelect={onSelect} />
                 ))}
@@ -310,7 +310,7 @@ function ActionPanel({ state, action: t, human, live, onSelect, run }: { state: 
           {t.outputs.length > 0 && (
             <>
               <Sub>Outputs</Sub>
-              <div className="cf-refs">
+              <div className="lr-refs">
                 {t.outputs.map((o) => (
                   <Ref key={o} id={o} state={state} onSelect={onSelect} />
                 ))}
@@ -322,7 +322,7 @@ function ActionPanel({ state, action: t, human, live, onSelect, run }: { state: 
 
       {t.children.length > 0 && (
         <Section title={`Children (${t.children.filter((c) => state.actions[c]?.status === 'done').length}/${t.children.length} done)`}>
-          <div className="cf-refs is-col">
+          <div className="lr-refs is-col">
             {t.children.map((c) => (
               <Ref key={c} id={c} state={state} onSelect={onSelect} />
             ))}
@@ -383,7 +383,7 @@ function ActionPanel({ state, action: t, human, live, onSelect, run }: { state: 
 
       {canAct && t.status === 'abandoned' && (
         <Section title="Abandoned">
-          {t.abandoned && t.abandoned !== 'abandoned' ? <RichTextView value={t.abandoned} className="cf-rich-muted" /> : null}
+          {t.abandoned && t.abandoned !== 'abandoned' ? <RichTextView value={t.abandoned} className="lr-rich-muted" /> : null}
           <HStack gap={2}>
             <Button label="Restore" variant="secondary" size="sm" isDisabled={busy} clickAction={() => act('restore', { actionId: t.id })} />
           </HStack>
@@ -427,17 +427,17 @@ function ArtefactPanel({ state, artefact: a, human, live, onSelect, run }: { sta
   };
 
   return (
-    <aside className="cf-panel">
-      <header className={cx('cf-panel-head', `as-${a.status}`)}>
+    <aside className="lr-panel">
+      <header className={cx('lr-panel-head', `as-${a.status}`)}>
         <HStack gap={1.5} wrap="wrap" align="center">
           <Token
             size="sm"
             color={ARTEFACT_HUE[a.status]}
             label={ARTEFACT_LABEL[a.status]}
-            icon={<span className="cf-adot" />}
+            icon={<span className="lr-adot" />}
           />
           <Token size="sm" color="gray" label={a.kind} icon={<Icon name={kindIcon(a.kind)} size={12} />} />
-          <span className="cf-spacer" />
+          <span className="lr-spacer" />
           <Text type="code" size="sm" color="secondary">
             {a.id}
           </Text>
@@ -501,7 +501,7 @@ function ArtefactPanel({ state, artefact: a, human, live, onSelect, run }: { sta
           {producers.length > 0 && (
             <>
               <Sub>Produced by</Sub>
-              <div className="cf-refs is-col">
+              <div className="lr-refs is-col">
                 {producers.map((t) => (
                   <Ref key={t.id} id={t.id} state={state} onSelect={onSelect} />
                 ))}
@@ -511,7 +511,7 @@ function ArtefactPanel({ state, artefact: a, human, live, onSelect, run }: { sta
           {consumers.length > 0 && (
             <>
               <Sub>Consumed by</Sub>
-              <div className="cf-refs is-col">
+              <div className="lr-refs is-col">
                 {consumers.map((t) => (
                   <Ref key={t.id} id={t.id} state={state} onSelect={onSelect} />
                 ))}

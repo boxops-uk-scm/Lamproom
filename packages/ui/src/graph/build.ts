@@ -1,4 +1,4 @@
-// State -> one ELK graph per workflow plus React Flow edges. Each workflow
+// State -> one ELK graph per seam plus React Flow edges. Each seam
 // (connected component) lays out independently inside a frame, so adding a
 // goal never reshuffles another. Decomposed actions become compound nodes;
 // collapsed groups and frames fold their contents onto a single node.
@@ -7,12 +7,12 @@ import type { Edge } from '@xyflow/react';
 import type { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk-api';
 import {
   containerOf,
-  workflows,
+  seams,
   type ActionState,
   type ArtefactState,
   type State,
-  type Workflow,
-} from '@coalface/core';
+  type Seam,
+} from '@lamproom/core';
 
 export const ACTION_W = 236;
 export const ACTION_H = 88;
@@ -23,8 +23,8 @@ export const FRAME_MIN_W = 460;
 export const FRAME_COLLAPSED_W = 360;
 export const FRAME_COLLAPSED_H = 112;
 
-export const frameId = (wfId: string): string => `wf:${wfId}`;
-export const isFrameId = (id: string): boolean => id.startsWith('wf:');
+export const frameId = (wfId: string): string => `seam:${wfId}`;
+export const isFrameId = (id: string): boolean => id.startsWith('seam:');
 export const unframe = (id: string): string => (isFrameId(id) ? id.slice(3) : id);
 
 export interface FrameState {
@@ -39,7 +39,7 @@ export interface FrameState {
 export interface BuildOptions {
   collapsedGroups: Set<string>;
   frames: Record<string, FrameState>;
-  /** Workflow ids in focus; empty means all. */
+  /** Seam ids in focus; empty means all. */
   focus: string[];
 }
 
@@ -57,7 +57,7 @@ export interface VisualMeta {
 }
 
 export interface BuiltComponent {
-  wf: Workflow;
+  seam: Seam;
   collapsed: boolean;
   pinned: boolean;
   dim: boolean;
@@ -108,8 +108,8 @@ const GROUP_OPTIONS: Record<string, string> = {
 };
 
 export function build(s: State, opts: BuildOptions): Built {
-  const wfs = workflows(s);
-  const finish = new Set(wfs.list.flatMap((w) => w.deliverables));
+  const allSeams = seams(s);
+  const finish = new Set(allSeams.list.flatMap((w) => w.deliverables));
   const isGroup = (id: string): boolean => (s.actions[id]?.children.length ?? 0) > 0;
 
   // Model order: an artefact sits right after the first action that produces
@@ -135,23 +135,23 @@ export function build(s: State, opts: BuildOptions): Built {
   const allMeta = new Map<string, VisualMeta>();
   const allEdges: Edge[] = [];
 
-  for (const wf of wfs.list) {
-    const fid = frameId(wf.id);
-    const frame = opts.frames[wf.id];
+  for (const seam of allSeams.list) {
+    const fid = frameId(seam.id);
+    const frame = opts.frames[seam.id];
     const collapsed = !!frame?.collapsed;
     const pinned = !!frame?.pinned;
-    const dim = opts.focus.length > 0 && !opts.focus.includes(wf.id);
-    const members = new Set([...wf.actions, ...wf.artefacts]);
+    const dim = opts.focus.length > 0 && !opts.focus.includes(seam.id);
+    const members = new Set([...seam.actions, ...seam.artefacts]);
     for (const m of members) frameOf.set(m, fid);
 
-    const c: BuiltComponent = { wf, collapsed, pinned, dim, meta: new Map(), edges: [] };
+    const c: BuiltComponent = { seam, collapsed, pinned, dim, meta: new Map(), edges: [] };
     components.push(c);
     frames.set(fid, c);
     if (collapsed) continue;
 
     // A decomposed goal is represented by the frame itself: its children lay
     // out directly inside, and its status lives in the frame header.
-    const goalGroup = wf.goal && isGroup(wf.goal.id) ? wf.goal.id : undefined;
+    const goalGroup = seam.goal && isGroup(seam.goal.id) ? seam.goal.id : undefined;
     const collapsible = (id: string): boolean => isGroup(id) && id !== goalGroup && opts.collapsedGroups.has(id);
 
     /** Topmost collapsed group among an action's ancestors, starting at `from` inclusive. */

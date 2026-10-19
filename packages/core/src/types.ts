@@ -1,4 +1,4 @@
-// Core vocabulary of the coalface workflow algebra.
+// Core vocabulary of the Lamproom algebra: seams of artefacts and actions.
 // Artefacts are nodes, actions are hyperedges (inputs -> outputs), and
 // everything is derived from an append-only event log.
 
@@ -108,7 +108,7 @@ export type Event = EventPayload & {
   v?: number;
   /** Global position, assigned by the store at commit. Orders events across streams. */
   seq?: number;
-  /** The workflow stream this event belongs to, assigned by the store at commit. */
+  /** The seam stream this event belongs to, assigned by the store at commit. */
   stream?: string;
   /** Position within its stream, dense from 1, assigned by the store at commit. */
   rev?: number;
@@ -122,7 +122,7 @@ export const PROJECTION_VERSION = 2;
 // ---- Policy -------------------------------------------------------------
 
 /**
- * An atom replaces a naked artefact kind with a small workflow fragment:
+ * An atom replaces a naked artefact kind with a small seam fragment:
  * naked -> action (typed to an actor kind) -> terminal artefact.
  * Expansion fires on declaration, never on version advance.
  */

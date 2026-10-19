@@ -1,5 +1,5 @@
-// Node-side client for the coalface server, shared by the CLI and the
-// plugin. Holds the sign-in config (~/.config/coalface/config.json: one API
+// Node-side client for the lamproom server, shared by the CLI and the
+// plugin. Holds the sign-in config (~/.config/lamproom/config.json: one API
 // token per server), works out which project the working directory is
 // (its GitHub remote), and wraps the API.
 
@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import type { Actor, Event, Policy, State } from '@coalface/core';
+import type { Actor, Event, Policy, State } from '@lamproom/core';
 
 const run = promisify(execFile);
 
@@ -22,7 +22,7 @@ export interface Config {
 }
 
 export function configPath(): string {
-  return process.env.COALFACE_CONFIG ?? path.join(process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), '.config'), 'coalface', 'config.json');
+  return process.env.LAMPROOM_CONFIG ?? path.join(process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), '.config'), 'lamproom', 'config.json');
 }
 
 export function loadConfig(): Config {
@@ -41,11 +41,11 @@ export function saveConfig(c: Config): void {
 }
 
 export function resolveServer(explicit?: string): string {
-  return (explicit ?? process.env.COALFACE_SERVER ?? loadConfig().default ?? DEFAULT_SERVER).replace(/\/$/, '');
+  return (explicit ?? process.env.LAMPROOM_SERVER ?? loadConfig().default ?? DEFAULT_SERVER).replace(/\/$/, '');
 }
 
 export function tokenFor(server: string): string | undefined {
-  return process.env.COALFACE_TOKEN ?? loadConfig().servers[server]?.token;
+  return process.env.LAMPROOM_TOKEN ?? loadConfig().servers[server]?.token;
 }
 
 // ---- which project ------------------------------------------------------
@@ -140,7 +140,7 @@ export class Client {
     try {
       res = await fetch(`${this.server}${p}`, { method, headers, body: body === undefined ? undefined : raw ? (body as string) : JSON.stringify(body) });
     } catch (e) {
-      throw new ClientError(0, `cannot reach ${this.server}: ${e instanceof Error ? e.message : String(e)}. Is "coalface serve" running?`);
+      throw new ClientError(0, `cannot reach ${this.server}: ${e instanceof Error ? e.message : String(e)}. Is "lamproom serve" running?`);
     }
     const text = await res.text();
     const isJson = (res.headers.get('content-type') ?? '').includes('json');
@@ -153,7 +153,7 @@ export class Client {
           // keep text
         }
       }
-      if (res.status === 401) msg = `not signed in to ${this.server}: run "coalface login"`;
+      if (res.status === 401) msg = `not signed in to ${this.server}: run "lamproom login"`;
       throw new ClientError(res.status, msg);
     }
     return (isJson ? JSON.parse(text) : text) as T;
@@ -230,16 +230,16 @@ export function logout(server: string): void {
   saveConfig(c);
 }
 
-/** Which project a directory is: --project owner/name, COALFACE_PROJECT, or its GitHub remote. */
+/** Which project a directory is: --project owner/name, LAMPROOM_PROJECT, or its GitHub remote. */
 export async function resolveProject(client: Client, cwd: string, explicit?: string): Promise<Project> {
-  const spec = explicit ?? process.env.COALFACE_PROJECT;
+  const spec = explicit ?? process.env.LAMPROOM_PROJECT;
   const repo = spec ? parseRepo(spec) : await repoOf(cwd);
-  if (!repo) throw new ClientError(0, 'no project: this directory has no GitHub remote; pass --project owner/name or set COALFACE_PROJECT');
+  if (!repo) throw new ClientError(0, 'no project: this directory has no GitHub remote; pass --project owner/name or set LAMPROOM_PROJECT');
   try {
     return await client.projectByRepo(repo.owner, repo.name);
   } catch (e) {
     if (e instanceof ClientError && e.status === 404) {
-      throw new ClientError(404, `${repo.owner}/${repo.name} is not registered on ${client.server}; run "coalface init" there first`);
+      throw new ClientError(404, `${repo.owner}/${repo.name} is not registered on ${client.server}; run "lamproom init" there first`);
     }
     throw e;
   }

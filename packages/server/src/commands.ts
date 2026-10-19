@@ -2,10 +2,10 @@
 // command's ids live in; a proposal or declaration that references nothing
 // starts a new stream named after what it creates. Each core command sees
 // only its stream's state, which is also what makes "no edges between
-// workflows" hold at the server without trusting the client.
+// seams" hold at the server without trusting the client.
 
-import * as core from '@coalface/core';
-import type { Actor, Ctx, Event, Result } from '@coalface/core';
+import * as core from '@lamproom/core';
+import type { Actor, Ctx, Event, Result } from '@lamproom/core';
 import { ConflictError, NotFoundError, type Project, type Store } from './store.js';
 
 export interface CommandRequest {
@@ -84,7 +84,7 @@ export async function runCommand(
     if (seen) return seen as CommandResponse;
   }
   const args = req.args ?? {};
-  // A batch of goals with no parent is several workflows: one stream each.
+  // A batch of goals with no parent is several seams: one stream each.
   if (req.command === 'propose' && !args.parent && Array.isArray(args.actions) && args.actions.length > 1 && commandRefs(args).length === 0) {
     const parts: CommandResponse[] = [];
     for (const a of args.actions as unknown[]) parts.push(await runCommand(store, project, who, { command: 'propose', args: { actions: [a] } }));

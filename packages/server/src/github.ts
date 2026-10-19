@@ -31,14 +31,14 @@ export interface GitHubRepo {
 }
 
 export function githubFromEnv(env: NodeJS.ProcessEnv = process.env): GitHubConfig | undefined {
-  const clientId = env.COALFACE_GITHUB_CLIENT_ID;
+  const clientId = env.LAMPROOM_GITHUB_CLIENT_ID;
   if (!clientId) return undefined;
   return {
     clientId,
-    clientSecret: env.COALFACE_GITHUB_CLIENT_SECRET ?? '',
-    url: (env.COALFACE_GITHUB_URL ?? 'https://github.com').replace(/\/$/, ''),
-    apiUrl: (env.COALFACE_GITHUB_API_URL ?? 'https://api.github.com').replace(/\/$/, ''),
-    scope: env.COALFACE_GITHUB_SCOPE,
+    clientSecret: env.LAMPROOM_GITHUB_CLIENT_SECRET ?? '',
+    url: (env.LAMPROOM_GITHUB_URL ?? 'https://github.com').replace(/\/$/, ''),
+    apiUrl: (env.LAMPROOM_GITHUB_API_URL ?? 'https://api.github.com').replace(/\/$/, ''),
+    scope: env.LAMPROOM_GITHUB_SCOPE,
   };
 }
 
@@ -116,7 +116,7 @@ export class GitHub {
 
   private async api(token: string, path: string): Promise<unknown> {
     const res = await fetch(`${this.cfg.apiUrl}${path}`, {
-      headers: { accept: 'application/vnd.github+json', authorization: `Bearer ${token}`, 'user-agent': 'coalface' },
+      headers: { accept: 'application/vnd.github+json', authorization: `Bearer ${token}`, 'user-agent': 'lamproom' },
     });
     if (!res.ok) throw new HttpError(res.status, `GitHub ${path}: ${res.status}`);
     return res.json();

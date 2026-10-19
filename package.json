@@ -1,23 +1,18 @@
 {
-  "name": "coalface",
+  "name": "lamproom",
   "private": true,
   "version": "0.2.0",
-  "description": "Hypergraph workflow tracker for agentic development",
+  "description": "Lamproom: tracks agentic development as a hypergraph of artefacts and actions, one seam per goal",
   "scripts": {
     "build": "pnpm -r build",
-    "test": "pnpm --filter @coalface/core --filter @coalface/server test",
+    "test": "pnpm --filter @lamproom/core --filter @lamproom/server test",
     "typecheck": "pnpm -r typecheck",
-    "dev:ui": "pnpm --filter @coalface/ui dev",
-    "serve": "node packages/cli/dist/coalface.js serve",
-    "seed": "pnpm --filter @coalface/cli seed"
+    "dev:ui": "pnpm --filter @lamproom/ui dev",
+    "serve": "node packages/cli/dist/lamproom.js serve",
+    "seed": "pnpm --filter @lamproom/cli seed"
   },
   "devDependencies": {
     "typescript": "^5.9.0"
   },
-  "packageManager": "pnpm@12.14.0",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
-  }
+  "packageManager": "pnpm@12.14.0"
 }

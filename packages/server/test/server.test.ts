@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { start, type Started } from '../src/index.js';
 import { startFakeGitHub, type FakeGitHub } from './fake-github.js';
-import { project, unionState, workflows, type Event, type State } from '@coalface/core';
+import { project, unionState, seams, type Event, type State } from '@lamproom/core';
 
 let gh: FakeGitHub;
 let srv: Started;
@@ -12,16 +12,16 @@ let dataDir: string;
 
 beforeAll(async () => {
   gh = await startFakeGitHub();
-  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'coalface-test-'));
+  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lamproom-test-'));
   srv = await start({
     port: 0,
     dataDir,
     env: {
-      COALFACE_GITHUB_CLIENT_ID: 'id',
-      COALFACE_GITHUB_CLIENT_SECRET: 'secret',
-      COALFACE_GITHUB_URL: gh.url,
-      COALFACE_GITHUB_API_URL: gh.url,
-      COALFACE_SECRET: 'test-secret',
+      LAMPROOM_GITHUB_CLIENT_ID: 'id',
+      LAMPROOM_GITHUB_CLIENT_SECRET: 'secret',
+      LAMPROOM_GITHUB_URL: gh.url,
+      LAMPROOM_GITHUB_API_URL: gh.url,
+      LAMPROOM_SECRET: 'test-secret',
     },
     log: () => undefined,
   });
@@ -96,7 +96,7 @@ describe('sign-in', () => {
     expect(me.body.user.login).toBe('ada');
   });
   it('a forged cookie is ignored', async () => {
-    const r = await fetch(`${srv.url}/api/me`, { headers: { cookie: 'cf_session=abc.def' } });
+    const r = await fetch(`${srv.url}/api/me`, { headers: { cookie: 'lr_session=abc.def' } });
     expect(r.status).toBe(401);
   });
 });
@@ -104,17 +104,17 @@ describe('sign-in', () => {
 describe('projects', () => {
   it('registers a repository the user can see and refuses one they cannot', async () => {
     const tom = api({ cookie: await signInWeb('tom') });
-    const made = await tom<{ id: string; repoId: number }>('POST', '/api/projects', { owner: 'boxops', name: 'coalface' });
+    const made = await tom<{ id: string; repoId: number }>('POST', '/api/projects', { owner: 'boxops', name: 'lamproom' });
     expect(made.status).toBe(201);
     expect(made.body.repoId).toBe(500);
     const no = await tom('POST', '/api/projects', { owner: 'boxops', name: 'secret' });
     expect(no.status).toBe(404);
     const list = await tom<{ name: string }[]>('GET', '/api/projects');
-    expect(list.body.map((p) => p.name)).toContain('coalface');
+    expect(list.body.map((p) => p.name)).toContain('lamproom');
   });
   it('a second user joins by repo when GitHub lets them see it', async () => {
     const ada = api({ authorization: `Bearer ${await signInDevice('ada')}` });
-    const p = await ada<{ id: string }>('GET', '/api/projects/by-repo/boxops/coalface');
+    const p = await ada<{ id: string }>('GET', '/api/projects/by-repo/boxops/lamproom');
     expect(p.status).toBe(200);
     const www = await api({ cookie: await signInWeb('tom') })('POST', '/api/projects', { owner: 'boxops', name: 'www' });
     expect(www.status).toBe(201);
@@ -128,7 +128,7 @@ describe('streams', () => {
   let pid: string;
   beforeAll(async () => {
     tom = api({ cookie: await signInWeb('tom') });
-    pid = (await tom<{ id: string }>('GET', '/api/projects/by-repo/boxops/coalface')).body.id;
+    pid = (await tom<{ id: string }>('GET', '/api/projects/by-repo/boxops/lamproom')).body.id;
   });
   const cmd = <T = Record<string, unknown>>(body: Record<string, unknown>) => tom<T & { ok: boolean; stream: string; rev: number; error?: string }>('POST', `/api/projects/${pid}/commands`, body);
 
@@ -155,13 +155,13 @@ describe('streams', () => {
     expect(streams.body.streams.find((s) => s.id === goalA.id)!.total).toBe(3); // goal, review, child
   });
 
-  it('refuses an edge between workflows', async () => {
+  it('refuses an edge between seams', async () => {
     const list = (await tom<{ streams: { id: string; state: State }[] }>('GET', `/api/projects/${pid}/streams?states=1`)).body.streams;
     const docB = Object.values(list.find((s) => s.state.actions[s.id]?.title === 'Goal B')!.state.artefacts)[0]!.id;
     const goalA = list.find((s) => s.state.actions[s.id]?.title === 'Goal A')!.id;
     const r = await cmd({ command: 'propose', args: { parent: goalA, actions: [{ title: 'bridge', inputs: [docB] }] } });
     expect(r.status).toBe(400);
-    expect(r.body.error).toMatch(/workflows/);
+    expect(r.body.error).toMatch(/seams/);
   });
 
   it('expected revisions conflict and idempotency keys replay', async () => {
@@ -177,7 +177,7 @@ describe('streams', () => {
     expect(again.body.rev).toBe(b.rev + 1);
   });
 
-  it('a follow-up joins a finished workflow and the live feed catches up by seq', async () => {
+  it('a follow-up joins a finished seam and the live feed catches up by seq', async () => {
     const list = (await tom<{ streams: { id: string; state: State; headSeq: number }[] }>('GET', `/api/projects/${pid}/streams?states=1`)).body.streams;
     const b = list.find((s) => s.state.actions[s.id]?.title === 'Goal B')!;
     const doc = b.state.actions[b.id]!.outputs[0]!;
@@ -217,7 +217,7 @@ describe('streams', () => {
     const full = project(events);
     expect(Object.keys(union.actions).sort()).toEqual(Object.keys(full.actions).sort());
     for (const id of Object.keys(full.actions)) expect(union.actions[id]!.status).toBe(full.actions[id]!.status);
-    expect(workflows(union).list.length).toBe(workflows(full).list.length);
+    expect(seams(union).list.length).toBe(seams(full).list.length);
   });
 
   it('imports a v1 file log into streams', async () => {
@@ -232,6 +232,6 @@ describe('streams', () => {
     const st = (await tom<{ streams: { title: string; status: string }[] }>('GET', `/api/projects/${www}/streams`)).body.streams;
     expect(st.map((s) => s.title).sort()).toEqual(['Add passwordless login', 'Move CI to GitHub Actions']);
     const text = (await tom<string>('GET', `/api/projects/${www}/status`)).body;
-    expect(text).toContain('Coalface:');
+    expect(text).toContain('Lamproom:');
   });
 });

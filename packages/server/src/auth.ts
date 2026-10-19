@@ -1,11 +1,11 @@
 // Who is calling. Humans sign in with GitHub in the browser (session cookie)
 // or from a terminal (device flow, then a long-lived API token). Each
 // GitHub token is encrypted at rest. In development the server can run with
-// COALFACE_DEV_USER set, which signs every request in as that user without
+// LAMPROOM_DEV_USER set, which signs every request in as that user without
 // GitHub; the UI shows it.
 
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import type { Actor } from '@coalface/core';
+import type { Actor } from '@lamproom/core';
 import type { Db } from './db.js';
 import type { GitHub, GitHubUser } from './github.js';
 
@@ -157,7 +157,7 @@ export class Auth {
   }
 
   async mintToken(userId: string, label?: string): Promise<string> {
-    const token = `cft_${randomBytes(24).toString('base64url')}`;
+    const token = `lrt_${randomBytes(24).toString('base64url')}`;
     await this.db.run(`INSERT INTO api_tokens (hash, user_id, label, created_at) VALUES (?, ?, ?, ?)`, [
       sha(token),
       userId,
@@ -178,7 +178,7 @@ export class Auth {
       }
       if (!this.devUser) return undefined;
     }
-    const sid = this.verifyCookie(readCookie(headers.cookie, 'cf_session'));
+    const sid = this.verifyCookie(readCookie(headers.cookie, 'lr_session'));
     if (sid) {
       const r = await this.db.get<{ user_id: string; expires_at: string }>(`SELECT user_id, expires_at FROM sessions WHERE id = ?`, [sid]);
       if (r && Date.parse(r.expires_at) > Date.now()) return this.user(r.user_id);

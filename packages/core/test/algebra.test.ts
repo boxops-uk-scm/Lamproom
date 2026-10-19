@@ -17,7 +17,7 @@ import {
   restore,
   review,
   validatePolicy,
-  workflows,
+  seams,
   type Actor,
   type Ctx,
   type Event,
@@ -238,7 +238,7 @@ describe('relaying human decisions', () => {
   });
 });
 
-describe('workflows', () => {
+describe('seams', () => {
   it('each goal is one component, including policy siblings and questions', () => {
     const m = new Mem();
     const g1 = seed(m).actions[0]!.id;
@@ -248,7 +248,7 @@ describe('workflows', () => {
     m.run(agent, (ctx) => claim(ctx, { actionId: g1 }));
     const q = m.run(agent, (ctx) => ask(ctx, { actionId: g1, question: 'Which?' }));
     const s = m.state;
-    const w = workflows(s);
+    const w = seams(s);
     expect(w.list.map((x) => x.id)).toEqual([g1, g2]);
     const first = w.list[0]!;
     // Review action for the PR and the question's answer action are top-level siblings but belong to goal 1.

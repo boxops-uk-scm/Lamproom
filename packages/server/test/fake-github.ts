@@ -14,8 +14,8 @@ export interface FakeGitHub {
 
 export async function startFakeGitHub(): Promise<FakeGitHub> {
   const users: FakeGitHub['users'] = {
-    tom: { id: 1001, login: 'tom', name: 'Tom Bates', repos: ['boxops/coalface', 'boxops/www'] },
-    ada: { id: 1002, login: 'ada', name: 'Ada', repos: ['boxops/coalface'] },
+    tom: { id: 1001, login: 'tom', name: 'Tom Bates', repos: ['boxops/lamproom', 'boxops/www'] },
+    ada: { id: 1002, login: 'ada', name: 'Ada', repos: ['boxops/lamproom'] },
   };
   const codes = new Map<string, string>(); // auth code -> login
   const tokens = new Map<string, string>(); // token -> login

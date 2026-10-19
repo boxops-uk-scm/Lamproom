@@ -1,9 +1,9 @@
 {
-  "name": "@coalface/server",
+  "name": "@lamproom/server",
   "version": "0.2.0",
   "type": "module",
   "private": true,
-  "description": "Coalface server: per-workflow event streams in SQLite (Postgres-shaped), GitHub sign-in, command API and live feed",
+  "description": "Lamproom server: per-seam event streams in SQLite (Postgres-shaped), GitHub sign-in, command API and live feed",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -12,7 +12,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@coalface/core": "workspace:*"
+    "@lamproom/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

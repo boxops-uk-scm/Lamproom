@@ -9,7 +9,7 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { LayoutContent, LayoutFooter } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
-import type { ArtefactState, Version } from '@coalface/core';
+import type { ArtefactState, Version } from '@lamproom/core';
 import { useEffect, useState } from 'react';
 import { Icon } from '../graph/nodes';
 import { RichTextView } from '../rich/RichTextView';
@@ -44,8 +44,8 @@ export function Versions({ artefact: a }: { artefact: ArtefactState }) {
 
   return (
     <>
-      <div className="cf-versions">
-        <div className="cf-split">
+      <div className="lr-versions">
+        <div className="lr-split">
           <Button label={`Version ${number(chosen)}`} variant="secondary" size="sm" onClick={() => setOpen(true)} />
           <DropdownMenu
             items={items}
@@ -58,20 +58,20 @@ export function Versions({ artefact: a }: { artefact: ArtefactState }) {
       </div>
       <Dialog isOpen={open} onOpenChange={(o) => !o && setOpen(false)} width={600}>
         <DialogHeader title={`Version ${number(chosen)}`} subtitle={meta(chosen)} />
-        <div className="cf-goal-form">
+        <div className="lr-goal-form">
           <LayoutContent>
             <VStack gap={4}>
               <RichTextView value={chosen.ref} />
               {chosen.note && (
                 <div>
                   <Text type="label">Note</Text>
-                  <RichTextView value={chosen.note} className="cf-rich-muted" />
+                  <RichTextView value={chosen.note} className="lr-rich-muted" />
                 </div>
               )}
             </VStack>
           </LayoutContent>
           <LayoutFooter>
-            <div className="cf-goal-actions">
+            <div className="lr-goal-actions">
               <Button label="Close" variant="secondary" onClick={() => setOpen(false)} />
             </div>
           </LayoutFooter>

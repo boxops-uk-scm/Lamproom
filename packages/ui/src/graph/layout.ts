@@ -17,7 +17,7 @@ const GAP = 56;
 
 export interface Placed {
   id: string;
-  type: 'action' | 'artefact' | 'group' | 'workflow';
+  type: 'action' | 'artefact' | 'group' | 'seam';
   parentId?: string;
   x: number;
   y: number;
@@ -40,7 +40,7 @@ function placedAt(frames: Record<string, FrameState>, id: string): { x: number; 
 }
 
 /**
- * Lay out every workflow independently, then place the frames: ones the user
+ * Lay out every seam independently, then place the frames: ones the user
  * has positioned stay exactly where they are, the rest stack top to bottom in
  * creation order, pushed clear of any positioned frame they would overlap.
  */
@@ -53,20 +53,20 @@ export async function layoutAll(built: Built, frames: Record<string, FrameState>
     }
     const res = await elk.layout(c.elk);
     const children: Placed[] = [];
-    walk(res, frameId(c.wf.id), c.meta, children);
+    walk(res, frameId(c.seam.id), c.meta, children);
     sized.push({ c, w: Math.max(res.width ?? 0, FRAME_MIN_W), h: res.height ?? 0, children });
   }
 
   const obstacles: { x: number; y: number; w: number; h: number }[] = [];
   for (const f of sized) {
-    const at = placedAt(frames, f.c.wf.id);
+    const at = placedAt(frames, f.c.seam.id);
     if (at) obstacles.push({ ...at, w: f.w, h: f.h });
   }
 
   const out: Placed[] = [];
   let nextY = 0;
   for (const f of sized) {
-    const at = placedAt(frames, f.c.wf.id);
+    const at = placedAt(frames, f.c.seam.id);
     let x: number;
     let y: number;
     if (at) {
@@ -89,7 +89,7 @@ export async function layoutAll(built: Built, frames: Record<string, FrameState>
       }
       nextY = y + f.h + GAP;
     }
-    out.push({ id: frameId(f.c.wf.id), type: 'workflow', x, y, w: f.w, h: f.h });
+    out.push({ id: frameId(f.c.seam.id), type: 'seam', x, y, w: f.w, h: f.h });
     out.push(...f.children);
   }
   return out;
@@ -111,16 +111,16 @@ export function toNode(p: Placed, built: Built, entering: boolean): Node {
     connectable: false,
     selectable: true,
   };
-  if (p.type === 'workflow') {
+  if (p.type === 'seam') {
     const c = built.frames.get(p.id)!;
     return {
       ...base,
-      type: 'workflow',
-      data: { workflow: c.wf, collapsed: c.collapsed, pinned: c.pinned, dim: c.dim, entering },
+      type: 'seam',
+      data: { seam: c.seam, collapsed: c.collapsed, pinned: c.pinned, dim: c.dim, entering },
       // Pinned frames are locked where they are.
       draggable: !c.pinned,
-      dragHandle: '.cf-frame-head',
-      className: c.dim ? 'cf-dim' : undefined,
+      dragHandle: '.lr-frame-head',
+      className: c.dim ? 'lr-dim' : undefined,
     };
   }
   const m = built.meta.get(p.id)!;
@@ -129,5 +129,5 @@ export function toNode(p: Placed, built: Built, entering: boolean): Node {
     m.type === 'artefact'
       ? { artefact: m.artefact, finish: m.finish, entering }
       : { action: m.action, collapsed: m.collapsed, childCount: m.childCount, doneCount: m.doneCount, entering };
-  return { ...base, type: m.type, data, draggable: false, className: dim ? 'cf-dim' : undefined };
+  return { ...base, type: m.type, data, draggable: false, className: dim ? 'lr-dim' : undefined };
 }

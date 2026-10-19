@@ -183,7 +183,7 @@ export async function openSqlite(file: string): Promise<Db> {
 export async function openPostgres(connectionString: string): Promise<Db> {
   const mod = (await import(/* @vite-ignore */ 'pg' as string)) as { default?: { Client: new (o: { connectionString: string }) => PgClient }; Client?: new (o: { connectionString: string }) => PgClient };
   const Client = mod.Client ?? mod.default?.Client;
-  if (!Client) throw new Error('pg package not found; install it to use COALFACE_DATABASE_URL');
+  if (!Client) throw new Error('pg package not found; install it to use LAMPROOM_DATABASE_URL');
   const client = new Client({ connectionString });
   await client.connect();
   const db: Db = {

@@ -172,13 +172,13 @@ importers:
 
   packages/cli:
     dependencies:
-      '@coalface/client':
+      '@lamproom/client':
         specifier: workspace:*
         version: link:../client
-      '@coalface/core':
+      '@lamproom/core':
         specifier: workspace:*
         version: link:../core
-      '@coalface/server':
+      '@lamproom/server':
         specifier: workspace:*
         version: link:../server
     devDependencies:
@@ -194,7 +194,7 @@ importers:
 
   packages/client:
     dependencies:
-      '@coalface/core':
+      '@lamproom/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -219,10 +219,10 @@ importers:
 
   packages/plugin:
     dependencies:
-      '@coalface/client':
+      '@lamproom/client':
         specifier: workspace:*
         version: link:../client
-      '@coalface/core':
+      '@lamproom/core':
         specifier: workspace:*
         version: link:../core
       '@modelcontextprotocol/sdk':
@@ -244,7 +244,7 @@ importers:
 
   packages/server:
     dependencies:
-      '@coalface/core':
+      '@lamproom/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -263,7 +263,7 @@ importers:
       '@astryxdesign/core':
         specifier: 0.7.1
         version: 0.7.1(@stylexjs/stylex@0.19.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      '@coalface/core':
+      '@lamproom/core':
         specifier: workspace:*
         version: link:../core
       '@lexical/code':

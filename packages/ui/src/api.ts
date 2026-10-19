@@ -1,8 +1,8 @@
-// The browser's view of the server. Reads are per project: every workflow
+// The browser's view of the server. Reads are per project: every seam
 // stream's current state at once, one stream's events for scrubbing, and a
 // live feed that resumes from the last seq the page saw.
 
-import type { Actor, Event, Policy, State } from '@coalface/core';
+import type { Actor, Event, Policy, State } from '@lamproom/core';
 
 export interface Me {
   user: { id: string; login: string; name?: string; avatar?: string };

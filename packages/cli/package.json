@@ -1,11 +1,11 @@
 {
-  "name": "@coalface/cli",
+  "name": "@lamproom/cli",
   "version": "0.1.0",
   "type": "module",
   "private": true,
-  "description": "coalface CLI: run the server, sign in, register a project, act as a human, import and export logs",
+  "description": "Lamproom CLI: run the server, sign in, register a project, act as a human, import and export logs",
   "bin": {
-    "coalface": "./dist/coalface.js"
+    "lamproom": "./dist/lamproom.js"
   },
   "scripts": {
     "build": "node build.mjs",
@@ -13,9 +13,9 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@coalface/client": "workspace:*",
-    "@coalface/core": "workspace:*",
-    "@coalface/server": "workspace:*"
+    "@lamproom/client": "workspace:*",
+    "@lamproom/core": "workspace:*",
+    "@lamproom/server": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

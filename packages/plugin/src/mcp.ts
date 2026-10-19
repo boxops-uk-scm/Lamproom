@@ -1,16 +1,16 @@
-// Coalface MCP server: the reporting verbs an agent uses to keep the workflow
+// Lamproom MCP server: the reporting verbs an agent uses to keep a seam
 // state in step with what it is doing. Every tool appends events; nothing
 // here touches the repository.
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import * as core from '@coalface/core';
-import { Client, ClientError, resolveProject, resolveServer, tokenFor, type CommandResponse, type Project } from '@coalface/client';
+import * as core from '@lamproom/core';
+import { Client, ClientError, resolveProject, resolveServer, tokenFor, type CommandResponse, type Project } from '@lamproom/client';
 
 // The agent is a label under the signed-in human's token; the server
 // stamps every event with agent:<label> and the human as principal.
-const label = process.env.COALFACE_AGENT ?? Math.random().toString(36).slice(2, 7);
+const label = process.env.LAMPROOM_AGENT ?? Math.random().toString(36).slice(2, 7);
 const serverUrl = resolveServer();
 const client = new Client(serverUrl, tokenFor(serverUrl));
 const meId = `agent:${label}`;
@@ -21,14 +21,14 @@ async function project(): Promise<Project> {
   return projectCache;
 }
 
-/** Whole-project state, the union of every workflow stream. */
+/** Whole-project state, the union of every seam stream. */
 async function state(): Promise<core.State> {
   const p = await project();
   const r = await client.states(p.id);
   return core.unionState(r.streams.map((s) => s.state));
 }
 
-const server = new McpServer({ name: 'coalface', version: '0.2.0' });
+const server = new McpServer({ name: 'lamproom', version: '0.2.0' });
 
 type ToolResult = { content: { type: 'text'; text: string }[]; isError?: boolean };
 const text = (t: string): ToolResult => ({ content: [{ type: 'text', text: t }] });
@@ -50,7 +50,7 @@ function faceLine(s: core.State): string {
 
 function explain(e: unknown): string {
   if (e instanceof ClientError) {
-    if (e.status === 401) return `${e.message}. The human must run "coalface login" in a terminal, then restart this session.`;
+    if (e.status === 401) return `${e.message}. The human must run "lamproom login" in a terminal, then restart this session.`;
     return e.message;
   }
   return e instanceof Error ? e.message : String(e);
@@ -88,9 +88,9 @@ const OutputSpec = z.union([
 server.registerTool(
   'status',
   {
-    title: 'Coalface status',
+    title: 'Lamproom status',
     description:
-      'Show the workflow: your held actions, the coal face (actions ready for an agent), actions waiting on humans, blocked actions, and decomposed actions in progress. Call this first.',
+      'Show every seam in this project: your held actions, the coal face (actions ready for an agent), actions waiting on humans, blocked actions, and decomposed actions in progress. Call this first.',
     inputSchema: {},
   },
   async () => {
@@ -149,7 +149,7 @@ server.registerTool(
   {
     title: 'Propose actions',
     description:
-      'Add actions to the workflow. With no parent and no inputs this starts a new goal (its own workflow); with a parent it decomposes that action into children (call evaluate with judgement "decompose" first); with inputs from a finished workflow\'s delivered artefacts and no parent it is a follow-up that extends that workflow. Outputs may be existing artefact ids or new artefacts declared inline; declaring a pull-request or question automatically adds the human review or answer step required by policy. Inputs are artefact ids the action needs before it can start; they must all belong to one workflow.',
+      'Add actions to a seam. With no parent and no inputs this starts a new goal (its own seam); with a parent it decomposes that action into children (call evaluate with judgement "decompose" first); with inputs from a finished seam\'s delivered artefacts and no parent it is a follow-up that extends that seam. Outputs may be existing artefact ids or new artefacts declared inline; declaring a pull-request or question automatically adds the human review or answer step required by policy. Inputs are artefact ids the action needs before it can start; they must all belong to one seam.',
     inputSchema: {
       parent: z.string().optional().describe('action id being decomposed'),
       actions: z
@@ -360,4 +360,4 @@ server.registerTool(
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
-process.stderr.write(`coalface mcp ready as ${meId} against ${serverUrl}\n`);
+process.stderr.write(`lamproom mcp ready as ${meId} against ${serverUrl}\n`);

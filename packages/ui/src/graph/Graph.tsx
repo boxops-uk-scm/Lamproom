@@ -10,7 +10,7 @@ import {
   type Edge,
   type Node,
 } from '@xyflow/react';
-import type { State } from '@coalface/core';
+import type { State } from '@lamproom/core';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { build, frameId, isFrameId, unframe, type Built, type FrameState } from './build';
 import { layoutAll, toNode, type Placed } from './layout';
@@ -21,7 +21,7 @@ interface Props {
   state: State;
   collapsedGroups: Set<string>;
   frames: Record<string, FrameState>;
-  /** Workflow ids in focus; empty means all. */
+  /** Seam ids in focus; empty means all. */
   focus: string[];
   selected?: string;
   theme: 'light' | 'dark';
@@ -195,7 +195,7 @@ export function Graph({
     else rf.fitView(FIT);
   }, [fitKey, rf, focusKey, fitFocus]);
 
-  // Focusing workflows brings them into view, now or after the next layout.
+  // Focusing seams brings them into view, now or after the next layout.
   useEffect(() => {
     const f = focusRef.current;
     if (!f.length) return;
@@ -209,7 +209,7 @@ export function Graph({
         const hot = !!selected && (e.source === selected || e.target === selected);
         return {
           ...e,
-          className: hot ? 'cf-edge is-hot' : 'cf-edge',
+          className: hot ? 'lr-edge is-hot' : 'lr-edge',
           zIndex: hot ? 1000 : 0,
           markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
           pathOptions: { borderRadius: 14 },
@@ -305,7 +305,7 @@ export function Graph({
       >
         <Background variant={BackgroundVariant.Dots} gap={24} size={1.1} />
         {/* Zoom controls as Astryx buttons, so their hints are Astryx tooltips. */}
-        <Panel position="bottom-right" className="cf-controls">
+        <Panel position="bottom-right" className="lr-controls">
           <IconButton size="sm" variant="secondary" label="Zoom in" tooltip="Zoom in" icon={<Icon name="plus" size={14} />} onClick={() => rf.zoomIn({ duration: 200 })} />
           <IconButton size="sm" variant="secondary" label="Zoom out" tooltip="Zoom out" icon={<Icon name="minus" size={14} />} onClick={() => rf.zoomOut({ duration: 200 })} />
           <IconButton size="sm" variant="secondary" label="Fit view" tooltip="Fit view" icon={<Icon name="fit" size={14} />} onClick={() => rf.fitView({ padding: 0.2, duration: 300 })} />
@@ -317,7 +317,7 @@ export function Graph({
           nodeStrokeWidth={0}
           nodeBorderRadius={4}
           nodeColor={(n) => {
-            if (n.type === 'workflow') return colours.frame;
+            if (n.type === 'seam') return colours.frame;
             if (n.type === 'artefact') return colours.artefact;
             if (n.type === 'group') return colours.group;
             const st = (n.data as ActionData).action?.status ?? 'blocked';

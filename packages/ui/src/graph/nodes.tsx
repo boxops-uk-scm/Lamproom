@@ -1,6 +1,6 @@
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
-import type { ActionState, ActionStatus, ArtefactState, ArtefactStatus, Workflow, WorkflowStatus } from '@coalface/core';
-import { summary } from '@coalface/core';
+import type { ActionState, ActionStatus, ArtefactState, ArtefactStatus, Seam, SeamStatus } from '@lamproom/core';
+import { summary } from '@lamproom/core';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { ProgressBar } from '@astryxdesign/core/ProgressBar';
 import { Token } from '@astryxdesign/core/Token';
@@ -55,8 +55,8 @@ export interface ArtefactData extends Record<string, unknown> {
   finish?: boolean;
   entering?: boolean;
 }
-export interface WorkflowData extends Record<string, unknown> {
-  workflow: Workflow;
+export interface SeamData extends Record<string, unknown> {
+  seam: Seam;
   collapsed: boolean;
   pinned: boolean;
   dim: boolean;
@@ -65,7 +65,7 @@ export interface WorkflowData extends Record<string, unknown> {
 export type ActionNodeT = Node<ActionData, 'action'>;
 export type GroupNodeT = Node<ActionData, 'group'>;
 export type ArtefactNodeT = Node<ArtefactData, 'artefact'>;
-export type WorkflowNodeT = Node<WorkflowData, 'workflow'>;
+export type SeamNodeT = Node<SeamData, 'seam'>;
 
 export const GraphContext = createContext<{
   selected?: string;
@@ -76,7 +76,7 @@ export const GraphContext = createContext<{
   onFocus: (id: string | undefined, additive?: boolean) => void;
 }>({ focused: [], onToggle: () => {}, onToggleFrame: () => {}, onPinFrame: () => {}, onFocus: () => {} });
 
-export const WORKFLOW_LABEL: Record<WorkflowStatus, string> = {
+export const SEAM_LABEL: Record<SeamStatus, string> = {
   done: 'Done',
   abandoned: 'Abandoned',
   active: 'In progress',
@@ -118,7 +118,7 @@ export const STATUS_HUE: Record<ActionStatus, Hue> = {
   abandoned: 'gray',
 };
 
-export const WORKFLOW_HUE: Record<WorkflowStatus, Hue> = {
+export const SEAM_HUE: Record<SeamStatus, Hue> = {
   done: 'green',
   abandoned: 'gray',
   active: 'blue',
@@ -146,7 +146,7 @@ export function cx(...parts: (string | false | undefined | null)[]): string {
 
 // ---- icons ---------------------------------------------------------------
 
-// Phosphor, as Boxops uses. The names are Coalface's own vocabulary.
+// Phosphor, as Boxops uses. The names are Lamproom's own vocabulary.
 const ICONS: Record<string, PhosphorIcon> = {
   person: User,
   bolt: Lightning,
@@ -199,7 +199,7 @@ export function Icon({
     <Glyph
       size={size}
       weight={weight ?? (name === 'pinned' || name === 'flag' ? 'fill' : 'regular')}
-      className={cx('cf-icon', className)}
+      className={cx('lr-icon', className)}
       aria-hidden="true"
     />
   );
@@ -237,7 +237,7 @@ export function kindIcon(kind: string): string {
 
 /** A status chip: an Astryx Token in the state's hue, with the state dot. */
 export function StatusToken({ label, hue, size = 'sm' }: { label: string; hue: Hue; size?: 'sm' | 'md' }) {
-  return <Token size={size} color={hue} label={label} icon={<span className="cf-dot" />} />;
+  return <Token size={size} color={hue} label={label} icon={<span className="lr-dot" />} />;
 }
 
 /** Done-over-total as an Astryx progress bar with the count beside it. */
@@ -245,11 +245,11 @@ export function Progress({ done, total, width = 112 }: { done: number; total: nu
   const root = useRef<HTMLSpanElement>(null);
   return (
     <>
-      <span ref={root} className="cf-progress">
-        <span className="cf-progress-bar" style={{ width }}>
+      <span ref={root} className="lr-progress">
+        <span className="lr-progress-bar" style={{ width }}>
           <ProgressBar label={`${done} of ${total} done`} isLabelHidden value={done} max={Math.max(total, 1)} variant="success" />
         </span>
-        <span className="cf-progress-n">
+        <span className="lr-progress-n">
           {done}/{total}
         </span>
       </span>
@@ -263,14 +263,14 @@ export function Progress({ done, total, width = 112 }: { done: number; total: nu
 export function actionMeta(t: ActionState, data: ActionData): ReactNode {
   if (data.collapsed) {
     return (
-      <span className="cf-meta-item">
+      <span className="lr-meta-item">
         {data.doneCount}/{data.childCount} children done
       </span>
     );
   }
   if (t.status === 'active' && t.claimedBy) {
     return (
-      <span className="cf-meta-item">
+      <span className="lr-meta-item">
         <Icon name={t.claimedBy.kind === 'human' ? 'person' : 'bolt'} size={12} />
         {t.claimedBy.name ?? t.claimedBy.id}
       </span>
@@ -278,17 +278,17 @@ export function actionMeta(t: ActionState, data: ActionData): ReactNode {
   }
   if (t.status === 'blocked') {
     return (
-      <span className="cf-meta-item">
+      <span className="lr-meta-item">
         waiting on {t.blockedOn.length} input{t.blockedOn.length === 1 ? '' : 's'}
       </span>
     );
   }
-  if (t.status === 'rework') return <span className="cf-meta-item">output rejected</span>;
-  if (t.status === 'submitted') return <span className="cf-meta-item">waiting for review</span>;
+  if (t.status === 'rework') return <span className="lr-meta-item">output rejected</span>;
+  if (t.status === 'submitted') return <span className="lr-meta-item">waiting for review</span>;
   if (t.status === 'done' || t.status === 'abandoned') {
     const last = [...t.log].reverse().find((l) => l.type === 'action.completed' || l.type === 'action.abandoned');
     return (
-      <span className="cf-meta-item">
+      <span className="lr-meta-item">
         {last ? (
           <>
             <Icon name={last.actor.kind === 'human' ? 'person' : 'bolt'} size={12} />
@@ -305,12 +305,12 @@ export function actionMeta(t: ActionState, data: ActionData): ReactNode {
   const criteria = t.evaluation?.criteria?.length ?? 0;
   if (criteria) {
     return (
-      <span className="cf-meta-item">
+      <span className="lr-meta-item">
         {criteria} criteria
       </span>
     );
   }
-  return <span className="cf-meta-item">{t.evaluation ? t.evaluation.judgement : 'not yet evaluated'}</span>;
+  return <span className="lr-meta-item">{t.evaluation ? t.evaluation.judgement : 'not yet evaluated'}</span>;
 }
 
 export function ActionNode({ id, data }: NodeProps<ActionNodeT>) {
@@ -322,25 +322,25 @@ export function ActionNode({ id, data }: NodeProps<ActionNodeT>) {
     <>
     <div
       className={cx(
-        'cf-node cf-action',
+        'lr-node lr-action',
         `st-${t.status}`,
         human && 'is-human',
         selected === id && 'is-selected',
         data.collapsed && 'is-collapsed',
-        data.entering && 'cf-enter',
+        data.entering && 'lr-enter',
       )}
       ref={root}
     >
-      <Handle type="target" position={Position.Left} className="cf-handle" />
-      <div className="cf-action-head">
-        <span className="cf-dot" />
-        <span className="cf-status">{human && t.status === 'ready' ? 'Needs you' : STATUS_LABEL[t.status]}</span>
-        <span className="cf-spacer" />
-        {human && <Icon name="person" size={13} className="cf-human-mark" />}
-        {t.size && <span className="cf-size">{t.size}</span>}
+      <Handle type="target" position={Position.Left} className="lr-handle" />
+      <div className="lr-action-head">
+        <span className="lr-dot" />
+        <span className="lr-status">{human && t.status === 'ready' ? 'Needs you' : STATUS_LABEL[t.status]}</span>
+        <span className="lr-spacer" />
+        {human && <Icon name="person" size={13} className="lr-human-mark" />}
+        {t.size && <span className="lr-size">{t.size}</span>}
       </div>
-      <div className="cf-title">{t.title}</div>
-      <div className="cf-meta">
+      <div className="lr-title">{t.title}</div>
+      <div className="lr-meta">
         {actionMeta(t, data)}
         {data.collapsed && (
           <span className="nodrag">
@@ -358,7 +358,7 @@ export function ActionNode({ id, data }: NodeProps<ActionNodeT>) {
           </span>
         )}
       </div>
-      <Handle type="source" position={Position.Right} className="cf-handle" />
+      <Handle type="source" position={Position.Right} className="lr-handle" />
     </div>
       <CanvasHint anchorRef={root} content={summary(t.description) || t.title} />
     </>
@@ -369,8 +369,8 @@ export function GroupNode({ id, data }: NodeProps<GroupNodeT>) {
   const { selected, onToggle } = useContext(GraphContext);
   const t = data.action;
   return (
-    <div className={cx('cf-group', `st-${t.status}`, selected === id && 'is-selected', data.entering && 'cf-enter')}>
-      <div className="cf-group-head">
+    <div className={cx('lr-group', `st-${t.status}`, selected === id && 'is-selected', data.entering && 'lr-enter')}>
+      <div className="lr-group-head">
         <span className="nodrag">
           <IconButton
             size="sm"
@@ -384,9 +384,9 @@ export function GroupNode({ id, data }: NodeProps<GroupNodeT>) {
             }}
           />
         </span>
-        <span className="cf-group-title">{t.title}</span>
-        {t.size && <span className="cf-size">{t.size}</span>}
-        <span className="cf-group-progress">
+        <span className="lr-group-title">{t.title}</span>
+        {t.size && <span className="lr-size">{t.size}</span>}
+        <span className="lr-group-progress">
           <Progress done={data.doneCount} total={data.childCount} width={96} />
         </span>
       </div>
@@ -403,44 +403,44 @@ export function ArtefactNode({ id, data }: NodeProps<ArtefactNodeT>) {
     <>
     <div
       className={cx(
-        'cf-node cf-artefact',
+        'lr-node lr-artefact',
         `as-${a.status}`,
         `kind-${a.kind}`,
         human && 'is-human',
         data.finish && 'is-finish',
         selected === id && 'is-selected',
-        data.entering && 'cf-enter',
+        data.entering && 'lr-enter',
       )}
       ref={root}
     >
-      <Handle type="target" position={Position.Left} className="cf-handle" />
-      <Icon name={data.finish ? 'flag' : kindIcon(a.kind)} size={14} className="cf-kind" />
-      <span className="cf-artefact-title">{a.title}</span>
-      <span className="cf-adot" />
-      <Handle type="source" position={Position.Right} className="cf-handle" />
+      <Handle type="target" position={Position.Left} className="lr-handle" />
+      <Icon name={data.finish ? 'flag' : kindIcon(a.kind)} size={14} className="lr-kind" />
+      <span className="lr-artefact-title">{a.title}</span>
+      <span className="lr-adot" />
+      <Handle type="source" position={Position.Right} className="lr-handle" />
     </div>
       <CanvasHint anchorRef={root} content={`${data.finish ? 'Deliverable. ' : ''}${a.kind}: ${a.title} (${ARTEFACT_LABEL[a.status]})`} />
     </>
   );
 }
 
-export function WorkflowNode({ id, data }: NodeProps<WorkflowNodeT>) {
+export function SeamNode({ id, data }: NodeProps<SeamNodeT>) {
   const { selected, focused, onToggleFrame, onPinFrame, onFocus } = useContext(GraphContext);
   const titleRef = useRef<HTMLSpanElement>(null);
-  const wf = data.workflow;
-  const isFocused = focused.includes(wf.id);
+  const seam = data.seam;
+  const isFocused = focused.includes(seam.id);
   const stop = (e: React.MouseEvent) => e.stopPropagation();
   const tools = (
-    <span className="cf-frame-tools nodrag">
+    <span className="lr-frame-tools nodrag">
       <IconButton
         size="sm"
         variant={isFocused ? 'primary' : 'ghost'}
-        label={isFocused ? 'Unfocus this workflow' : 'Focus this workflow'}
-        tooltip={isFocused ? 'Unfocus this workflow' : 'Focus this workflow. Shift-click to add it to the current focus'}
+        label={isFocused ? 'Unfocus this seam' : 'Focus this seam'}
+        tooltip={isFocused ? 'Unfocus this seam' : 'Focus this seam. Shift-click to add it to the current focus'}
         icon={<Icon name="target" size={14} />}
         onClick={(e) => {
           stop(e);
-          onFocus(wf.id, e.shiftKey || e.ctrlKey || e.metaKey);
+          onFocus(seam.id, e.shiftKey || e.ctrlKey || e.metaKey);
         }}
       />
       <IconButton
@@ -451,58 +451,58 @@ export function WorkflowNode({ id, data }: NodeProps<WorkflowNodeT>) {
         icon={<Icon name={data.pinned ? 'pinned' : 'pin'} size={14} />}
         onClick={(e) => {
           stop(e);
-          onPinFrame(wf.id);
+          onPinFrame(seam.id);
         }}
       />
       <IconButton
         size="sm"
         variant="ghost"
-        label={data.collapsed ? 'Expand workflow' : 'Collapse workflow'}
-        tooltip={data.collapsed ? 'Expand workflow' : 'Collapse workflow'}
+        label={data.collapsed ? 'Expand seam' : 'Collapse seam'}
+        tooltip={data.collapsed ? 'Expand seam' : 'Collapse seam'}
         icon={<Icon name={data.collapsed ? 'plus' : 'shrink'} size={14} />}
         onClick={(e) => {
           stop(e);
-          onToggleFrame(wf.id);
+          onToggleFrame(seam.id);
         }}
       />
     </span>
   );
-  const grip = <Icon name={data.pinned ? 'pinned' : 'grip'} size={16} className="cf-grip" />;
+  const grip = <Icon name={data.pinned ? 'pinned' : 'grip'} size={16} className="lr-grip" />;
   const status = (
     <>
-      {wf.goal?.size && <span className="cf-size">{wf.goal.size}</span>}
-      <StatusToken label={WORKFLOW_LABEL[wf.status]} hue={WORKFLOW_HUE[wf.status]} />
-      <Progress done={wf.done} total={wf.total} />
+      {seam.goal?.size && <span className="lr-size">{seam.goal.size}</span>}
+      <StatusToken label={SEAM_LABEL[seam.status]} hue={SEAM_HUE[seam.status]} />
+      <Progress done={seam.done} total={seam.total} />
     </>
   );
   const className = cx(
-    'cf-frame',
-    `wf-${wf.status}`,
+    'lr-frame',
+    `seam-${seam.status}`,
     isFocused && 'is-focused',
     data.pinned && 'is-pinned',
     data.collapsed && 'is-collapsed',
     selected === id && 'is-selected',
-    data.entering && 'cf-enter',
+    data.entering && 'lr-enter',
   );
   if (data.collapsed) {
     return (
       <div className={className}>
-        <div className={cx('cf-frame-head', data.pinned && 'nopan')}>
+        <div className={cx('lr-frame-head', data.pinned && 'nopan')}>
           {grip}
-          <span ref={titleRef} className="cf-frame-title">
-            {wf.title}
+          <span ref={titleRef} className="lr-frame-title">
+            {seam.title}
           </span>
-          <CanvasHint anchorRef={titleRef} content={wf.title} placement="below" />
+          <CanvasHint anchorRef={titleRef} content={seam.title} placement="below" />
           {tools}
         </div>
-        <div className="cf-frame-body">
+        <div className="lr-frame-body">
           {status}
-          <span className="cf-muted">
-            {wf.actions.length} action{wf.actions.length === 1 ? '' : 's'}
+          <span className="lr-muted">
+            {seam.actions.length} action{seam.actions.length === 1 ? '' : 's'}
           </span>
-          {wf.humanQueue > 0 && (
-            <span className="cf-needs-you">
-              <Icon name="person" size={12} /> {wf.humanQueue} waiting on you
+          {seam.humanQueue > 0 && (
+            <span className="lr-needs-you">
+              <Icon name="person" size={12} /> {seam.humanQueue} waiting on you
             </span>
           )}
         </div>
@@ -511,12 +511,12 @@ export function WorkflowNode({ id, data }: NodeProps<WorkflowNodeT>) {
   }
   return (
     <div className={className}>
-      <div className={cx('cf-frame-head', data.pinned && 'nopan')}>
+      <div className={cx('lr-frame-head', data.pinned && 'nopan')}>
         {grip}
-        <span ref={titleRef} className="cf-frame-title">
-          {wf.title}
+        <span ref={titleRef} className="lr-frame-title">
+          {seam.title}
         </span>
-        <CanvasHint anchorRef={titleRef} content={wf.title} placement="below" />
+        <CanvasHint anchorRef={titleRef} content={seam.title} placement="below" />
         {status}
         {tools}
       </div>
@@ -524,4 +524,4 @@ export function WorkflowNode({ id, data }: NodeProps<WorkflowNodeT>) {
   );
 }
 
-export const nodeTypes = { action: ActionNode, group: GroupNode, artefact: ArtefactNode, workflow: WorkflowNode };
+export const nodeTypes = { action: ActionNode, group: GroupNode, artefact: ArtefactNode, seam: SeamNode };
