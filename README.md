@@ -20,16 +20,18 @@ its own pull request.
 | `packages/server` | The server: per-seam event streams in SQLite (Postgres-shaped), GitHub sign-in, sessions and API tokens, the command API, a resumable live feed, JSON-lines import and export. Tested against a fake GitHub. |
 | `packages/client` | Node client shared by the CLI and the plugin: sign-in config, project resolution from a git remote, API calls. |
 | `packages/cli` | `lamproom` command: run the server, sign in, register a project, act as a human, import and export logs. |
-| `packages/plugin` | Claude Code plugin: MCP reporting tools, a SessionStart hook that injects the coal face, and the `mine` skill. Talks to the server. |
+| `packages/plugin` | Claude Code plugin: MCP reporting tools, a SessionStart hook that injects the coal face, the `mine` skill, and hooks that record ordinary chat work after every turn. Talks to the server. |
 | `packages/ui` | Live graph and board: Vite, React Flow, ELK layered layout, per-seam history scrubber. Components from Meta's Astryx, themed with the Boxops design tokens. |
 
 ## Quick start
 
-Requires Node 22 and pnpm.
+Requires Node 22 and pnpm. Agents doing real work also need Claude Code and
+the GitHub CLI (`gh`), signed in with push access to the repositories you track.
 
 ```bash
 pnpm install
 pnpm build
+alias lamproom="node $PWD/packages/cli/dist/lamproom.js"
 ```
 
 Run the server. For development without a GitHub App, name a user and every
@@ -58,8 +60,14 @@ claude --plugin-dir /path/to/lamproom/packages/plugin
 
 The agent proposes a top-level action with a pull-request deliverable, policy
 adds the human review step, and the agent works the face: evaluate, implement
-or decompose, report. Review, answer questions, and take over actions from the
-UI, or from the shell:
+or decompose, report. Every action that delivers a pull request gets its own
+branch (`lamproom/<actionId>-<slug>`) and its own PR, so a goal usually lands
+as several. Each implementation runs in a subagent in its own git worktree, up
+to four at once, so the main checkout is never touched. Work that depends on
+an unmerged PR stacks on that PR's branch. A pull request's version is its URL
+at the head commit (`.../pull/<n>/commits/<sha>`), so each push is a new
+version and a rejection clears when new commits land. Review, answer
+questions, and take over actions from the UI, or from the shell:
 
 ```bash
 lamproom status
@@ -176,12 +184,15 @@ frame with the goal's title, status, and progress in its header and its
 deliverables flagged at the right edge. Frames lay out independently and stack
 automatically. Drag a frame by its header and it stays where you drop it, with
 the others flowing around it; pin it to lock it there so it cannot be dragged;
-Tidy returns every unpinned frame to the automatic stack. Finished seams
+Tidy returns every unpinned frame to the automatic stack. A decomposed action
+collapses to a single card; expanded, it becomes a dashed frame around its
+children. Finished seams
 fold up on their own, and unfold if a follow-up reopens them. Focus one or
 more seams from the picker in the top bar, a frame's focus button, or a
 double-click on a frame (shift to add it to the focus), to dim the others, fit
 them to the view, scope the counts to them, and enable the history slider for
-their events alone. A single click on the canvas clears only the selection; a
+their events alone; scrubbing jumps straight to each point in history, and
+only live updates animate. A single click on the canvas clears only the selection; a
 double-click on the canvas, or Escape, clears the focus. Frame positions, pins,
 and collapse state are remembered per project in the browser.
 The details pane on the right resizes from its left edge: drag the handle, or
@@ -263,4 +274,7 @@ pnpm --filter @lamproom/ui dev  # Vite dev server, proxies /api and /auth to :44
 ```
 
 The CLI bundles the server; after a change run `pnpm build` and restart
-`lamproom serve`. The plugin bundles the client the same way.
+`lamproom serve`. The plugin bundles the client the same way; restart the
+Claude Code session to load a rebuilt plugin. The auto-tracking prompts in
+`packages/plugin/prompts` are read on every turn, so edits to them need no
+rebuild.
