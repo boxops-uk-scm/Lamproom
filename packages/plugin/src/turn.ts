@@ -26,9 +26,13 @@ if (input.hook_event_name === 'UserPromptSubmit') {
         JSON.stringify({
           hookSpecificOutput: {
             hookEventName: 'UserPromptSubmit',
+            // Rehearsals land in the same file, so the framing has to cover
+            // both: calling a rehearsal "recorded" would be a lie the
+            // session then repeats to the user.
             additionalContext:
-              `Lamproom recorded your recent chat work automatically:\n${notes}\n` +
-              'You do not need to report this again.',
+              `Lamproom checked your recent chat work automatically:\n${notes}\n` +
+              'Entries marked DRY RUN were rehearsed and recorded nowhere; everything else is already ' +
+              'in the log and need not be reported again.',
           },
         }),
       );

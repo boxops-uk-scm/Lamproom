@@ -1,12 +1,20 @@
 // Lamproom MCP server: the reporting verbs an agent uses to keep a seam
 // state in step with what it is doing. Every tool appends events; nothing
 // here touches the repository.
+//
+// With LAMPROOM_DRY_RUN=1 the verbs that would append events are traced to
+// LAMPROOM_DRY_RUN_LOG and sent nowhere. Reads still reach the server, so a
+// prompt under test sees the real graph, and provisional ids let the agent
+// carry on past a propose and show the rest of what it would have done.
 
+import fs from 'node:fs';
+import path from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import * as core from '@lamproom/core';
 import { Client, ClientError, resolveProject, resolveServer, tokenFor, type CommandResponse, type Project } from '@lamproom/client';
+import { describeMode, modeTrace, readMode, repoRoot, writeMode } from './autotrack.js';
 
 // The agent is a label under the signed-in human's token; the server
 // stamps every event with agent:<label> and the human as principal.
@@ -14,6 +22,38 @@ const label = process.env.LAMPROOM_AGENT ?? Math.random().toString(36).slice(2, 
 const serverUrl = resolveServer();
 const client = new Client(serverUrl, tokenFor(serverUrl));
 const meId = `agent:${label}`;
+
+const envDryRun = process.env.LAMPROOM_DRY_RUN === '1';
+const envTrace = process.env.LAMPROOM_DRY_RUN_LOG;
+
+/**
+ * Whether this call is a rehearsal, and where to trace it. Two sources: the
+ * environment, set by the tracker when the dry-run driver spawns it, and the
+ * repository's own mode, set by /lamproom:dry-run. The mode is read per call,
+ * not once at startup, so switching it takes effect on the very next tool
+ * call of a live session rather than at the next restart.
+ */
+function rehearsal(): { trace?: string } | undefined {
+  if (envDryRun) return { trace: envTrace };
+  try {
+    const cwd = process.cwd();
+    if (readMode(cwd).dryRun) return { trace: modeTrace(cwd) };
+  } catch {
+    // Unreadable mode means live: never silently stop recording.
+  }
+  return undefined;
+}
+
+/** One line of the rehearsal: every call the agent made, in order. */
+function trace(file: string | undefined, entry: { kind: 'read' | 'write' | 'refused'; tool: string; args?: unknown; note?: string }): void {
+  if (!file) return;
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.appendFileSync(file, `${JSON.stringify({ at: new Date().toISOString(), ...entry })}\n`);
+  } catch {
+    // A rehearsal must never break the thing it is rehearsing.
+  }
+}
 
 let projectCache: Project | undefined;
 async function project(): Promise<Project> {
@@ -56,6 +96,35 @@ function explain(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
+/**
+ * Provisional ids for a dry run, so a traced propose or declare can be
+ * referred to by the calls that follow it. Numbered per process and marked
+ * `dry` so they can never be mistaken for ids the server issued.
+ */
+let provisional = 0;
+const dryId = (prefix: 't' | 'a') => `${prefix}-dry${++provisional}`;
+
+/** What the server would have answered, enough for the describe callbacks. */
+function pretend(command: string, args: Record<string, unknown>): CommandResponse {
+  const r: CommandResponse = { ok: true, warnings: [] };
+  if (command === 'propose') {
+    const actions = (args.actions as { title: string; inputs?: string[]; outputs?: unknown[] }[]) ?? [];
+    r.actions = actions.map((a) => ({
+      id: dryId('t'),
+      title: a.title,
+      inputs: a.inputs ?? [],
+      outputs: (a.outputs ?? []).map((o) => (typeof o === 'string' ? o : dryId('a'))),
+    }));
+  }
+  if (command === 'declare') r.id = dryId('a');
+  if (command === 'amend') r.addedOutputs = ((args.addOutputs as unknown[]) ?? []).map(() => dryId('a'));
+  if (command === 'ask') {
+    r.questionId = dryId('a');
+    r.answerId = dryId('a');
+  }
+  return r;
+}
+
 async function mutate(
   command: string,
   args: Record<string, unknown>,
@@ -64,6 +133,19 @@ async function mutate(
 ): Promise<ToolResult> {
   try {
     const p = await project();
+    const dry = rehearsal();
+    if (dry) {
+      trace(dry.trace, { kind: 'write', tool: command, args: { ...args, onBehalfOf: onBehalfOf || undefined } });
+      const r = pretend(command, args);
+      return text(
+        [
+          `DRY RUN: ${command} was recorded for review and sent nowhere.`,
+          describe(r),
+          'Ids above are provisional. Carry on as though it succeeded.',
+          faceLine(await state()),
+        ].join('\n'),
+      );
+    }
     const r = await client.command(p.id, { command, args, agent: label, onBehalfOf });
     const lines = [describe(r)];
     if (r.warnings.length) lines.push(`Warnings: ${r.warnings.join('; ')}`);
@@ -96,7 +178,11 @@ server.registerTool(
   async () => {
     try {
       const p = await project();
-      return text(`You are ${meId} in ${p.owner}/${p.name}.\n${await client.status(p.id, label)}`);
+      trace(rehearsal()?.trace, { kind: 'read', tool: 'status' });
+      const m = readMode(process.cwd());
+      return text(
+        [`You are ${meId} in ${p.owner}/${p.name}.`, ...(m.dryRun ? [describeMode(m)] : []), await client.status(p.id, label)].join('\n'),
+      );
     } catch (e) {
       return fail(explain(e));
     }
@@ -112,10 +198,16 @@ server.registerTool(
   },
   async ({ id }) => {
     let s: core.State;
+    const dry = rehearsal();
+    trace(dry?.trace, { kind: 'read', tool: 'inspect', args: { id } });
     try {
       s = await state();
     } catch (e) {
       return fail(explain(e));
+    }
+    // A provisional id exists only in this rehearsal; say so rather than failing.
+    if (dry && /-dry\d+$/.test(id) && !s.actions[id] && !s.artefacts[id]) {
+      return text(`${id} is provisional: proposed earlier in this dry run and never sent, so it has no detail to inspect.`);
     }
     const t = s.actions[id];
     if (t) {
@@ -356,6 +448,43 @@ server.registerTool(
     },
   },
   async (args) => mutate('review', args, () => `Recorded ${args.verdict} for ${args.artefactId} on behalf of your principal.`, true),
+);
+
+server.registerTool(
+  'mode',
+  {
+    title: 'Switch tracking between recording and dry run',
+    description:
+      'Read or set how this repository\'s work is tracked. In dry run, every Lamproom verb that would append an event is rehearsed instead: the call is traced and answered with provisional ids, reads still return the real graph, and the automatic turn tracker reports what it would have recorded without recording it. The setting belongs to the checkout, not to this session, so it outlives a restart and must be switched off deliberately; give turns to have it revert on its own instead. Use it to try the tracking out from a state the chat has already reached.',
+    inputSchema: {
+      dryRun: z.boolean().optional().describe('true to rehearse, false to record; omit to read the current mode'),
+      turns: z.number().int().positive().optional().describe('rehearse this many turns, then go back to recording on its own'),
+    },
+  },
+  async ({ dryRun, turns }) => {
+    const cwd = process.cwd();
+    try {
+      if (dryRun === undefined) {
+        const m = readMode(cwd);
+        return text(`${describeMode(m)}\nCheckout: ${repoRoot(cwd)}`);
+      }
+      const m = writeMode(cwd, dryRun ? { dryRun: true, since: new Date().toISOString(), by: meId, turnsLeft: turns, rehearsed: 0 } : { dryRun: false });
+      return text(
+        [
+          describeMode(m),
+          `Checkout: ${repoRoot(cwd)}`,
+          ...(m.dryRun
+            ? [
+                'Nothing you report from now on reaches the log. Tell the user plainly that the rehearsal is on, and that it stays on until switched off.',
+                `Rehearsed calls are traced to ${modeTrace(cwd)}.`,
+              ]
+            : ['Reporting is live again.']),
+        ].join('\n'),
+      );
+    } catch (e) {
+      return fail(explain(e));
+    }
+  },
 );
 
 const transport = new StdioServerTransport();

@@ -1,0 +1,10 @@
+{
+  "promptId": "new-goal",
+  "reply": "I added a magic-link flow: a token table, the send and verify endpoints, and tests. Opened https://github.com/boxops-uk-scm/Lamproom/pull/14.",
+  "prompt": "Add passwordless login with magic links",
+  "activity": [
+    "edited src/auth/magicLink.ts, src/auth/magicLink.test.ts, src/db/tokens.sql",
+    "ran `git commit -m \"passwordless login via magic links\"` -> [main 9f2c1e0] passwordless login via magic links",
+    "ran `gh pr create --title \"Passwordless login\" --body \"magic links\"` -> https://github.com/boxops-uk-scm/Lamproom/pull/14"
+  ]
+}

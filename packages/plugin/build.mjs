@@ -18,3 +18,4 @@ await build({ ...common, entryPoints: ['src/mcp.ts'], outfile: 'dist/mcp.js' });
 await build({ ...common, entryPoints: ['src/session-start.ts'], outfile: 'dist/session-start.js' });
 await build({ ...common, entryPoints: ['src/turn.ts'], outfile: 'dist/turn.js' });
 await build({ ...common, entryPoints: ['src/stop.ts'], outfile: 'dist/stop.js' });
+await build({ ...common, entryPoints: ['src/dryrun.ts'], outfile: 'dist/dryrun.js' });

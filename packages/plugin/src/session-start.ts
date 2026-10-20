@@ -2,6 +2,7 @@
 // never has to ask for it. Output is the hook JSON contract.
 
 import { Client, ClientError, resolveProject, resolveServer, tokenFor } from '@lamproom/client';
+import { describeMode, readMode } from './autotrack.js';
 
 let input = '';
 process.stdin.setEncoding('utf8');
@@ -33,8 +34,21 @@ try {
     'then restart the session. When the user gives a goal and the tracker is reachable, invoke the /lamproom:mine skill with that goal as its argument.';
 }
 
+// Dry run belongs to the checkout, so a session can begin inside one that an
+// earlier session left on. Say so loudly: the cost of not knowing is work
+// that silently goes unrecorded.
+const mode = readMode(cwd);
+const announcement = mode.dryRun
+  ? `${describeMode(mode)} It was left on for this checkout, not by this session. Tell the user at your first opportunity, ` +
+    'and that /lamproom:dry-run off resumes recording.'
+  : undefined;
+
 process.stdout.write(
   JSON.stringify({
-    hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: context },
+    hookSpecificOutput: {
+      hookEventName: 'SessionStart',
+      additionalContext: announcement ? `${announcement}\n\n${context}` : context,
+    },
+    ...(announcement ? { systemMessage: `${describeMode(mode)} Switch it off with /lamproom:dry-run off` } : {}),
   }),
 );

@@ -1,0 +1,6 @@
+{
+  "promptId": "incidental",
+  "reply": "I bumped the log level in your local config. Nothing else changed.",
+  "prompt": "turn up the log level locally so I can see the SQL",
+  "activity": ["edited .env.local"]
+}

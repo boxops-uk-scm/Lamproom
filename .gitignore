@@ -9,3 +9,6 @@ packages/ui/src/theme/boxops.css
 packages/ui/src/theme/boxops.css.d.ts
 packages/ui/src/theme/boxops.js
 packages/ui/src/theme/boxops.d.ts
+
+# Local server configuration (GitHub App credentials)
+.env

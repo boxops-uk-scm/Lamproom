@@ -20,7 +20,7 @@ its own pull request.
 | `packages/server` | The server: per-seam event streams in SQLite (Postgres-shaped), GitHub sign-in, sessions and API tokens, the command API, a resumable live feed, JSON-lines import and export. Tested against a fake GitHub. |
 | `packages/client` | Node client shared by the CLI and the plugin: sign-in config, project resolution from a git remote, API calls. |
 | `packages/cli` | `lamproom` command: run the server, sign in, register a project, act as a human, import and export logs. |
-| `packages/plugin` | Claude Code plugin: MCP reporting tools, a SessionStart hook that injects the coal face, the `mine` skill, and hooks that record ordinary chat work after every turn. Talks to the server. |
+| `packages/plugin` | Claude Code plugin: MCP reporting tools, a SessionStart hook that injects the coal face, the `mine` skill, the `dry-run` command, and hooks that record ordinary chat work after every turn. Talks to the server. |
 | `packages/ui` | Live graph and board: Vite, React Flow, ELK layered layout, per-seam history scrubber. Components from Meta's Astryx, themed with the Boxops design tokens. |
 
 ## Quick start
@@ -33,6 +33,33 @@ pnpm install
 pnpm build
 alias lamproom="node $PWD/packages/cli/dist/lamproom.js"
 ```
+
+The Makefile wraps all of this. `make doctor` reports what is missing, and
+production sign-in reads a GitHub App from `.env` (`cp .env.example .env`):
+
+```bash
+make build                       # every package
+make login                       # GitHub device flow, token to ~/.config/lamproom
+make serve                       # the server, GitHub sign-in; make serve-bg to detach
+make claude DIR=/path/to/repo    # Claude Code there with the plugin loaded
+make up DIR=/path/to/repo        # both: server detached, then Claude Code
+```
+
+`make serve` refuses to start without a GitHub App, and ignores
+`LAMPROOM_DEV_USER` if it is set; `make dev-serve DEV_USER=tom` is the
+development path below. `make help` lists every target.
+
+Run it from the repository you want tracked by naming this one with `-C`:
+
+```bash
+cd /path/to/some/repo
+make -C /path/to/lamproom claude      # tracks /path/to/some/repo
+make -C /path/to/lamproom init
+```
+
+`DIR` defaults to the directory you ran make in, not to this one, so the
+repository you are standing in is the one that gets tracked. Pass `DIR`
+explicitly to override it.
 
 Run the server. For development without a GitHub App, name a user and every
 request is signed in as them:
@@ -93,12 +120,60 @@ more when a turn is recorded.
    proposes a goal you stated in chat. It never evaluates, decomposes,
    answers or reviews.
 
+### Rehearsing it
+
+What the tracker does with a turn depends on the state the chat has reached:
+which seam is open, who holds which action, what earlier turns recorded. So
+the first way to test it is from inside a session, at the point you want to
+test. `/lamproom:dry-run` switches this checkout to rehearsing:
+
+```
+/lamproom:dry-run          on until you switch it off
+/lamproom:dry-run 5        on for the next five turns, then back on its own
+/lamproom:dry-run off      record again
+/lamproom:dry-run status   which mode is in force
+```
+
+While it is on, every Lamproom verb that would append an event is answered
+with provisional ids and traced instead, and at the end of each turn the
+tracker reports what it would have recorded: each stage's verdict, the tool
+calls with their arguments, and a warning when a turn would have started a
+new seam. Reads still return the real graph, so the rehearsal sees exactly
+what the live tracker would see. The setting belongs to the checkout, not the
+session: it survives a restart, every session that starts in it says so, and
+`status` carries it, because the cost of forgetting is work that quietly goes
+unrecorded.
+
+Both prompts can also be rehearsed against a turn with no session at all.
+`make dry-run` drives the same three stages in the same order from the same
+code, with the tracker's writes traced instead of sent; reads still reach the
+server, so the prompt under test sees the real graph.
+
+```bash
+make dry-run ARGS="packages/plugin/fixtures/new-goal.json"
+make dry-run ARGS="--prompt 'Add passwordless login' --edited src/auth.ts --committed"
+make dry-run ARGS="fixtures/new-goal.json --track-prompt /tmp/candidate.md"
+make dry-run ARGS="--session <id>"      # real turns, archived with LAMPROOM_KEEP_TURNS=1
+make fixtures                           # every bundled fixture
+```
+
+It reports each stage's verdict, every tool call the tracker would have made
+with its arguments, what it would have reported, and what the rehearsal cost.
+A `propose` is labelled with the structural move it makes, and a turn that
+would start a new seam is flagged, since that is the one outcome worth
+reading before it happens. `--stage screen` and `--stage classify` stop early,
+and `--stage screen` spends nothing. Provisional ids (`t-dry1`) stand in for
+the ids the server would have issued, so the calls after a `propose` still
+chain and the whole intent is visible.
+
 What it recorded is shown to you when the turn ends, and reaches the main
 session as context on your next prompt. Each session's turn records and
 `tracker.log` live in the plugin data directory
 (`~/.claude/plugins/data/<plugin>/sessions/<session>`). A tracked turn costs
-about a third of a cent. `LAMPROOM_AUTOTRACK=0` turns it off, and
-`LAMPROOM_TRACKER_MODEL` picks another model.
+about a third of a cent. `LAMPROOM_AUTOTRACK=0` turns it off,
+`LAMPROOM_TRACKER_MODEL` picks another model, and `LAMPROOM_KEEP_TURNS=1`
+archives each turn under `sessions/<session>/turns` so `make dry-run
+--session` can replay real ones.
 
 To see the UI with data and no agent, seed the demo seam (a goal and its tree of actions) into a project:
 

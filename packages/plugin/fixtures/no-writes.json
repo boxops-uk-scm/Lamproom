@@ -1,0 +1,10 @@
+{
+  "promptId": "no-writes",
+  "cwd": ".",
+  "reply": "The seam stalls because t-ab912 waits on a human review.",
+  "entries": [
+    { "kind": "prompt", "text": "why is the seam stalled?" },
+    { "kind": "tool", "tool": "Bash", "input": "git log --oneline -5", "output": "9f2c1e0 passwordless login", "lamproom": false },
+    { "kind": "tool", "tool": "Read", "input": "src/auth/magicLink.ts", "output": "", "lamproom": false }
+  ]
+}

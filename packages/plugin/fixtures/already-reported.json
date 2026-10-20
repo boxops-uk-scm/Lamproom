@@ -1,0 +1,10 @@
+{
+  "promptId": "already-reported",
+  "cwd": ".",
+  "reply": "Claimed t-ab912 and attached the pull request.",
+  "entries": [
+    { "kind": "prompt", "text": "/lamproom:mine work the face" },
+    { "kind": "tool", "tool": "Edit", "input": "src/auth/magicLink.ts", "output": "", "lamproom": false },
+    { "kind": "tool", "tool": "mcp__lamproom__claim", "input": "{\"actionId\":\"t-ab912\"}", "output": "Claimed t-ab912.", "lamproom": true }
+  ]
+}
