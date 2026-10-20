@@ -170,6 +170,34 @@ function Breadcrumb({ state, action, onSelect }: { state: State; action: ActionS
   );
 }
 
+/** A human action's status: once it can start, it is waiting on a person. */
+function humanStatus(t: ActionState): string {
+  if (t.status === 'ready') return 'Needs you';
+  if (t.status === 'rework') return 'Needs you: rework';
+  return STATUS_LABEL[t.status];
+}
+
+/** Why a human can't act on this action yet, or nothing when they can. */
+function whyNot(t: ActionState, state: State, live: boolean, human: Actor | undefined): string | undefined {
+  if (!live) return 'Viewing history: go back to Live to act';
+  if (!human) return 'Sign in to act';
+  switch (t.status) {
+    case 'ready':
+    case 'rework':
+      return undefined;
+    case 'blocked': {
+      const names = t.blockedOn.map((id) => `“${state.artefacts[id]?.title ?? id}”`);
+      return names.length ? `Blocked: waiting on ${names.join(', ')}` : 'Blocked: waiting on its inputs';
+    }
+    case 'done':
+      return 'Already done';
+    case 'abandoned':
+      return 'Abandoned: restore it to act';
+    default:
+      return `Not while ${STATUS_LABEL[t.status].toLowerCase()}`;
+  }
+}
+
 function ActionPanel({ state, action: t, human, live, onSelect, run, upload }: { state: State; action: ActionState } & Omit<Props, 'selected'>) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -179,6 +207,8 @@ function ActionPanel({ state, action: t, human, live, onSelect, run, upload }: {
   const isAnswer = isHumanAction && naked && naked.kind === 'question';
   const canAct = !!(live && human);
   const canAnswer = canAct && !busy && !isBlank(text) && t.status === 'ready';
+  // Shown on the review and answer buttons while they are disabled.
+  const blockedReason = whyNot(t, state, live, human);
 
   const act = async (command: string, args: Record<string, unknown>) => {
     setBusy(true);
@@ -197,9 +227,13 @@ function ActionPanel({ state, action: t, human, live, onSelect, run, upload }: {
       <header className={cx('lr-panel-head', `st-${t.status}`, isHumanAction && 'is-human')}>
         <Breadcrumb state={state} action={t} onSelect={onSelect} />
         <HStack gap={1.5} wrap="wrap" align="center">
-          <StatusToken label={STATUS_LABEL[t.status]} hue={actionHue(t)} />
+          {/* One badge: a human's action wears the person in place of the dot. */}
+          <StatusToken
+            label={isHumanAction ? humanStatus(t) : STATUS_LABEL[t.status]}
+            hue={actionHue(t)}
+            icon={isHumanAction ? <Icon name="person" size={12} /> : undefined}
+          />
           {t.size && <Token size="sm" color="gray" label={t.size} description="Size" />}
-          {isHumanAction && <Token size="sm" color="pink" label="human" icon={<Icon name="person" size={12} />} />}
           <span className="lr-spacer" />
           <Text type="code" size="sm" color="secondary">
             {t.id}
@@ -237,6 +271,7 @@ function ActionPanel({ state, action: t, human, live, onSelect, run, upload }: {
               variant="primary"
               size="sm"
               isDisabled={!canAct || busy || t.status !== 'ready'}
+              tooltip={blockedReason}
               clickAction={() => act('review', { artefactId: naked.id, verdict: 'accept', notes: items(text) })}
             />
             <Button
@@ -244,6 +279,7 @@ function ActionPanel({ state, action: t, human, live, onSelect, run, upload }: {
               variant="destructive"
               size="sm"
               isDisabled={!canAct || busy || t.status !== 'ready' || isBlank(text)}
+              tooltip={blockedReason ?? (isBlank(text) ? 'Add notes saying what falls short' : undefined)}
               clickAction={() => act('review', { artefactId: naked.id, verdict: 'reject', notes: items(text) })}
             />
           </HStack>
@@ -271,6 +307,7 @@ function ActionPanel({ state, action: t, human, live, onSelect, run, upload }: {
               variant="primary"
               size="sm"
               isDisabled={!canAnswer}
+              tooltip={blockedReason ?? (isBlank(text) ? 'Write an answer first' : undefined)}
               clickAction={() => act('answer', { questionId: naked.id, text })}
             />
           </HStack>

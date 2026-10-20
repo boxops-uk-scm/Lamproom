@@ -42,15 +42,19 @@ import {
   ChatText,
   File as FileIcon,
   Image as ImageIcon,
+  FlowArrow,
 } from '@phosphor-icons/react';
 import React, { createContext, useContext, useRef, type ReactNode } from 'react';
 import { CanvasHint } from '../hint';
+import { portHandle, type Port } from './build';
 
 export interface ActionData extends Record<string, unknown> {
   action: ActionState;
   collapsed: boolean;
   childCount: number;
   doneCount: number;
+  /** Ports view: the artefacts this card takes in and puts out. */
+  ports?: { inputs: Port[]; outputs: Port[] };
   entering?: boolean;
 }
 export interface ArtefactData extends Record<string, unknown> {
@@ -77,7 +81,8 @@ export const GraphContext = createContext<{
   onToggleFrame: (id: string) => void;
   onPinFrame: (id: string) => void;
   onFocus: (id: string | undefined, additive?: boolean) => void;
-}>({ focused: [], onToggle: () => {}, onToggleFrame: () => {}, onPinFrame: () => {}, onFocus: () => {} });
+  onSelect: (id: string | undefined) => void;
+}>({ focused: [], onToggle: () => {}, onToggleFrame: () => {}, onPinFrame: () => {}, onFocus: () => {}, onSelect: () => {} });
 
 export const SEAM_LABEL: Record<SeamStatus, string> = {
   done: 'Done',
@@ -187,6 +192,7 @@ const ICONS: Record<string, PhosphorIcon> = {
   file: FileIcon,
   image: ImageIcon,
   comment: ChatText,
+  ports: FlowArrow,
 };
 
 export function Icon({
@@ -242,8 +248,8 @@ export function kindIcon(kind: string): string {
 // ---- shared bits ---------------------------------------------------------
 
 /** A status chip: an Astryx Token in the state's hue, with the state dot. */
-export function StatusToken({ label, hue, size = 'sm' }: { label: string; hue: Hue; size?: 'sm' | 'md' }) {
-  return <Token size={size} color={hue} label={label} icon={<span className="lr-dot" />} />;
+export function StatusToken({ label, hue, size = 'sm', icon }: { label: string; hue: Hue; size?: 'sm' | 'md'; icon?: ReactNode }) {
+  return <Token size={size} color={hue} label={label} icon={icon ?? <span className="lr-dot" />} />;
 }
 
 /** Done-over-total as an Astryx progress bar with the count beside it. */
@@ -319,11 +325,58 @@ export function actionMeta(t: ActionState, data: ActionData): ReactNode {
   return <span className="lr-meta-item">{t.evaluation ? t.evaluation.judgement : 'not yet evaluated'}</span>;
 }
 
+function PortRow({ port, side }: { port: Port; side: 'in' | 'out' }) {
+  const { selected, onSelect } = useContext(GraphContext);
+  const row = useRef<HTMLDivElement>(null);
+  const a = port.artefact;
+  return (
+    <div
+      ref={row}
+      className={cx('lr-port', `is-${side}`, `as-${a.status}`, !port.wired && 'is-open', port.finish && 'is-finish', selected === a.id && 'is-selected')}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect(a.id);
+      }}
+    >
+      <Handle
+        type={side === 'in' ? 'target' : 'source'}
+        position={side === 'in' ? Position.Left : Position.Right}
+        id={portHandle(side, a.id)}
+        className="lr-port-pin"
+      />
+      <Icon name={port.finish && side === 'out' ? 'flag' : kindIcon(a.kind)} size={12} className="lr-port-kind" />
+      <span className="lr-port-title">{a.title}</span>
+      <CanvasHint anchorRef={row} content={`${port.finish ? 'Deliverable. ' : ''}${a.kind}: ${a.title} (${ARTEFACT_LABEL[a.status]})`} />
+    </div>
+  );
+}
+
+/** The ports area of a card: inputs down the left, outputs down the right, row for row. */
+function Ports({ ports }: { ports: NonNullable<ActionData['ports']> }) {
+  if (!ports.inputs.length && !ports.outputs.length) return null;
+  return (
+    <div className="lr-ports">
+      <div className="lr-ports-col">
+        {ports.inputs.map((p) => (
+          <PortRow key={p.id} port={p} side="in" />
+        ))}
+      </div>
+      <div className="lr-ports-col">
+        {ports.outputs.map((p) => (
+          <PortRow key={p.id} port={p} side="out" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ActionNode({ id, data }: NodeProps<ActionNodeT>) {
   const { selected, onToggle } = useContext(GraphContext);
   const root = useRef<HTMLDivElement>(null);
+  const commentsRef = useRef<HTMLSpanElement>(null);
   const t = data.action;
   const human = t.requires?.actorKind === 'human';
+  const ports = data.ports;
   return (
     <>
     <div
@@ -333,11 +386,12 @@ export function ActionNode({ id, data }: NodeProps<ActionNodeT>) {
         human && 'is-human',
         selected === id && 'is-selected',
         data.collapsed && 'is-collapsed',
+        ports && 'has-ports',
         data.entering && 'lr-enter',
       )}
       ref={root}
     >
-      <Handle type="target" position={Position.Left} className="lr-handle" />
+      {!ports && <Handle type="target" position={Position.Left} className="lr-handle" />}
       <div className="lr-action-head">
         <span className="lr-dot" />
         <span className="lr-status">{human && t.status === 'ready' ? 'Needs you' : STATUS_LABEL[t.status]}</span>
@@ -349,9 +403,10 @@ export function ActionNode({ id, data }: NodeProps<ActionNodeT>) {
       <div className="lr-meta">
         {actionMeta(t, data)}
         {t.comments.length > 0 && (
-          <span className="lr-meta-item lr-comment-count" title={`${t.comments.length} comment${t.comments.length === 1 ? '' : 's'}`}>
+          <span ref={commentsRef} className="lr-meta-item lr-comment-count">
             <Icon name="comment" size={12} />
             {t.comments.length}
+            <CanvasHint anchorRef={commentsRef} content={`${t.comments.length} comment${t.comments.length === 1 ? '' : 's'}`} />
           </span>
         )}
         {data.collapsed && (
@@ -370,9 +425,10 @@ export function ActionNode({ id, data }: NodeProps<ActionNodeT>) {
           </span>
         )}
       </div>
-      <Handle type="source" position={Position.Right} className="lr-handle" />
+      {ports ? <Ports ports={ports} /> : <Handle type="source" position={Position.Right} className="lr-handle" />}
     </div>
-      <CanvasHint anchorRef={root} content={summary(t.description) || t.title} />
+      {/* The ports, the comment count and the buttons have hints of their own. */}
+      <CanvasHint anchorRef={root} content={summary(t.description) || t.title} exclude=".lr-port, .lr-comment-count, .nodrag" />
     </>
   );
 }

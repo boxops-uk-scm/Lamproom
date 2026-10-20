@@ -91,12 +91,12 @@ export function fetchStreamEvents(projectId: string, stream: string): Promise<Ev
 export function subscribe(
   projectId: string,
   since: number,
-  handlers: { append: (events: Event[]) => void; status: (connected: boolean) => void },
+  handlers: { append: (events: Event[]) => void; status?: (connected: boolean) => void },
 ): () => void {
   const es = new EventSource(`/api/projects/${projectId}/events?since=${since}`);
   es.addEventListener('append', (e) => handlers.append((JSON.parse((e as MessageEvent).data) as { events: Event[] }).events));
-  es.onopen = () => handlers.status(true);
-  es.onerror = () => handlers.status(false);
+  es.onopen = () => handlers.status?.(true);
+  es.onerror = () => handlers.status?.(false);
   return () => es.close();
 }
 

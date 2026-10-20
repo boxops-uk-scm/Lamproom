@@ -52,6 +52,12 @@ export async function layoutAll(built: Built, frames: Record<string, FrameState>
       continue;
     }
     const res = await elk.layout(c.elk);
+    // Wires carry their route (frame coordinates) for the routed edge to draw.
+    for (const e of res.edges ?? []) {
+      const sec = e.sections?.[0];
+      const edge = c.edges.find((x) => x.id === e.id);
+      if (sec && edge) edge.data = { ...edge.data, route: [sec.startPoint, ...(sec.bendPoints ?? []), sec.endPoint] };
+    }
     const children: Placed[] = [];
     walk(res, frameId(c.seam.id), c.meta, children);
     sized.push({ c, w: Math.max(res.width ?? 0, FRAME_MIN_W), h: res.height ?? 0, children });
@@ -128,6 +134,6 @@ export function toNode(p: Placed, built: Built, entering: boolean): Node {
   const data =
     m.type === 'artefact'
       ? { artefact: m.artefact, finish: m.finish, entering }
-      : { action: m.action, collapsed: m.collapsed, childCount: m.childCount, doneCount: m.doneCount, entering };
+      : { action: m.action, collapsed: m.collapsed, childCount: m.childCount, doneCount: m.doneCount, ports: m.ports, entering };
   return { ...base, type: m.type, data, draggable: false, className: dim ? 'lr-dim' : undefined };
 }

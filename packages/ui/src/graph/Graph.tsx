@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { build, frameId, isFrameId, unframe, type Built, type FrameState } from './build';
 import { layoutAll, toNode, type Placed } from './layout';
 import { IconButton } from '@astryxdesign/core/IconButton';
+import { edgeTypes } from './edges';
 import { GraphContext, Icon, nodeTypes, type ActionData } from './nodes';
 
 interface Props {
@@ -29,12 +30,16 @@ interface Props {
   fitKey: number;
   /** Scrubbing history: each change jumps into place instead of animating. */
   replaying: boolean;
+  /** Artefacts as ports on the actions, node-editor style, instead of nodes. */
+  ports?: boolean;
   onSelect: (id: string | undefined) => void;
   onToggleGroup: (id: string) => void;
   onToggleFrame: (id: string) => void;
   onPinFrame: (id: string, position?: { x: number; y: number }) => void;
   onMoveFrame: (id: string, position: { x: number; y: number }) => void;
   onFocus: (id: string | undefined, additive?: boolean) => void;
+  /** Return unpinned seams to the automatic stack. */
+  onTidy: () => void;
 }
 
 const PALETTE = {
@@ -54,8 +59,8 @@ const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 
 export function Graph({
-  state, collapsedGroups, frames, focus, selected, theme, fitKey, replaying,
-  onSelect, onToggleGroup, onToggleFrame, onPinFrame, onMoveFrame, onFocus,
+  state, collapsedGroups, frames, focus, selected, theme, fitKey, replaying, ports = false,
+  onSelect, onToggleGroup, onToggleFrame, onPinFrame, onMoveFrame, onFocus, onTidy,
 }: Props) {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
@@ -177,7 +182,7 @@ export function Graph({
   );
 
   useEffect(() => {
-    const built = build(state, { collapsedGroups, frames: framesRef.current, focus: focusRef.current });
+    const built = build(state, { collapsedGroups, frames: framesRef.current, focus: focusRef.current, ports });
     const g = ++gen.current;
     let cancelled = false;
     layoutAll(built, framesRef.current)
@@ -194,15 +199,18 @@ export function Graph({
     return () => {
       cancelled = true;
     };
-  }, [state, collapsedGroups, structureKey, focusKey, bump, applyLayout]);
+  }, [state, collapsedGroups, structureKey, focusKey, bump, applyLayout, ports]);
 
-  useEffect(() => {
-    if (fitKey === 0) return;
+  /** Fit the focused seams, or everything, and keep fitting as the layout changes. */
+  const fit = useCallback(() => {
     autoFit.current = true;
     const f = focusRef.current;
     if (f.length) fitFocus(f);
     else rf.fitView(FIT);
-  }, [fitKey, rf, focusKey, fitFocus]);
+  }, [rf, fitFocus]);
+  useEffect(() => {
+    if (fitKey !== 0) fit();
+  }, [fitKey, focusKey, fit]);
 
   // Focusing seams brings them into view, now or after the next layout.
   useEffect(() => {
@@ -215,12 +223,16 @@ export function Graph({
   const styledEdges = useMemo(
     () =>
       edges.map((e) => {
-        const hot = !!selected && (e.source === selected || e.target === selected);
+        // A ports-view wire carries one artefact, and lights up with it too; it
+        // is drawn like any other edge, the pins at its ends showing the status.
+        const wire = e.data as { artefact?: string } | undefined;
+        const hot = !!selected && (e.source === selected || e.target === selected || wire?.artefact === selected);
         return {
           ...e,
           className: hot ? 'lr-edge is-hot' : 'lr-edge',
           zIndex: hot ? 1000 : 0,
-          markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
+          // A routed wire draws its own arrowhead: given a marker, React Flow drops it.
+          markerEnd: wire?.artefact ? undefined : { type: MarkerType.ArrowClosed, width: 16, height: 16 },
           pathOptions: { borderRadius: 14 },
         } as Edge;
       }),
@@ -236,8 +248,8 @@ export function Graph({
   );
 
   const ctx = useMemo(
-    () => ({ selected, focused: focus, onToggle: onToggleGroup, onToggleFrame, onPinFrame: pin, onFocus }),
-    [selected, focus, onToggleGroup, onToggleFrame, pin, onFocus],
+    () => ({ selected, focused: focus, onToggle: onToggleGroup, onToggleFrame, onPinFrame: pin, onFocus, onSelect }),
+    [selected, focus, onToggleGroup, onToggleFrame, pin, onFocus, onSelect],
   );
   const colours = PALETTE[theme];
 
@@ -248,6 +260,7 @@ export function Graph({
         nodes={nodes}
         edges={styledEdges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={(changes) => {
           // Keep the transition's starting positions in step with user drags.
           for (const ch of changes) {
@@ -318,7 +331,8 @@ export function Graph({
         <Panel position="bottom-right" className="lr-controls">
           <IconButton size="sm" variant="secondary" label="Zoom in" tooltip="Zoom in" icon={<Icon name="plus" size={14} />} onClick={() => rf.zoomIn({ duration: 200 })} />
           <IconButton size="sm" variant="secondary" label="Zoom out" tooltip="Zoom out" icon={<Icon name="minus" size={14} />} onClick={() => rf.zoomOut({ duration: 200 })} />
-          <IconButton size="sm" variant="secondary" label="Fit view" tooltip="Fit view" icon={<Icon name="fit" size={14} />} onClick={() => rf.fitView({ padding: 0.2, duration: 300 })} />
+          <IconButton size="sm" variant="secondary" label="Fit view" tooltip="Fit view" icon={<Icon name="fit" size={14} />} onClick={fit} />
+          <IconButton size="sm" variant="secondary" label="Tidy" tooltip="Tidy: return unpinned seams to the automatic stack" icon={<Icon name="tidy" size={14} />} onClick={onTidy} />
         </Panel>
         <MiniMap
           pannable

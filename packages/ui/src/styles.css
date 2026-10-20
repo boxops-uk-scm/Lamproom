@@ -9,7 +9,13 @@
   --mono: var(--font-family-code);
 
   --bg: var(--color-background-body);
-  --canvas: color-mix(in srgb, var(--color-text-primary) 4%, var(--color-background-body));
+  /* Dark: the Boxops palette's darkest slate, below the surface.
+     Light: Boxops' background is white like the cards, so the canvas takes a
+     faint tint to keep them apart. */
+  --canvas: light-dark(
+    color-mix(in srgb, var(--color-text-primary) 4%, var(--color-background-body)),
+    var(--lr-background-canvas-dark, var(--color-background-body))
+  );
   --surface: var(--color-background-card);
   --surface-2: var(--color-background-muted);
   --border: var(--color-border);
@@ -207,21 +213,38 @@ body {
 .lr-picker {
   margin-left: 6px;
 }
+/* The bar's view switcher and pickers read as one set: flat on the bar, in
+   the primary text colour, at one size. The seam picker's "All seams" is a
+   placeholder, which Astryx would otherwise grey. */
+.lr-top .lr-picker button {
+  color: var(--text);
+}
+.lr-top .astryx-segmented-control {
+  background: transparent;
+}
+.lr-top .astryx-segmented-control-item {
+  font-size: 14px;
+  font-weight: 500;
+}
+.lr-top .astryx-segmented-control-item[aria-checked='true'] {
+  background: var(--color-neutral);
+  color: var(--text);
+  box-shadow: none;
+}
+/* The counts sit as bare text over the top of the canvas: a status dot, the
+   number and its label, with nothing behind them. */
 .lr-stats {
   display: flex;
-  gap: 4px;
-  min-width: 0;
-  overflow: hidden;
-  margin-left: auto;
-  margin-right: auto;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px 16px;
+  pointer-events: auto;
 }
 .lr-stat {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: var(--radius-element);
-  --st: var(--text-muted);
+  --st: var(--c-blocked);
 }
 .lr-stat.tone-ready { --st: var(--c-ready); }
 .lr-stat.tone-human { --st: var(--c-human); }
@@ -229,9 +252,9 @@ body {
 .lr-stat.tone-done { --st: var(--c-done); }
 .lr-stat-value {
   font-weight: 700;
-  font-size: 15px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
-  color: var(--st);
+  color: var(--text);
 }
 .lr-stat-label {
   color: var(--text-muted);
@@ -243,17 +266,7 @@ body {
   align-items: center;
   gap: 8px;
   flex: none;
-}
-.lr-conn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-right: 4px;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-faint);
-  white-space: nowrap;
+  margin-left: auto;
 }
 
 .lr-main {
@@ -261,6 +274,9 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto var(--panel-w, 380px);
   min-height: 0;
+  /* With the pane collapsed the handle sits on the window edge, and its grab
+     area would otherwise widen the page. */
+  overflow: clip;
 }
 /* The Astryx resize handle sits in its own column and draws the divider. */
 .lr-splitter {
@@ -277,6 +293,8 @@ body {
 
 .react-flow {
   background: var(--canvas);
+  /* React Flow's dark mode paints its own near-black under the dots. */
+  --xy-background-color: var(--canvas);
 }
 .react-flow__node {
   cursor: pointer;
@@ -347,6 +365,94 @@ body {
   border-radius: var(--radius-container);
   overflow: hidden;
 }
+/* ---- ports view: artefacts as pins on the action cards ------------------ */
+
+.lr-action.has-ports {
+  display: grid;
+  /* One column the width of the card, never its content's: long titles clip. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 16px 34px 14px auto;
+  row-gap: 5px;
+  padding: 8px 12px 0 11px;
+  overflow: visible;
+}
+.lr-action.has-ports > * {
+  min-width: 0;
+}
+/* Inputs always on the left half and outputs on the right, so every wire
+   leaves from the right edge and arrives at the left. */
+.lr-ports {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  margin: 0 -12px 0 -11px;
+  padding-bottom: 8px;
+  border-top: 1px solid var(--border);
+}
+.lr-ports-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.lr-ports-col + .lr-ports-col {
+  border-left: 1px solid var(--border);
+}
+.lr-port {
+  position: relative;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  min-width: 0;
+}
+.lr-port.is-out {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+.lr-port:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+.lr-port.is-selected {
+  color: var(--text);
+  background: color-mix(in srgb, var(--edge-hot) 12%, transparent);
+}
+.lr-port.is-finish .lr-port-kind {
+  color: var(--c-done);
+}
+.lr-port-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lr-port-kind {
+  flex: none;
+}
+/* The pin is the artefact's status dot: hollow until produced, filled after. */
+.react-flow__handle.lr-port-pin {
+  width: 11px;
+  height: 11px;
+  min-width: 0;
+  min-height: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--as, var(--surface));
+  box-shadow: 0 0 0 2px var(--surface), inset 0 0 0 1.5px var(--as-ring, var(--border-strong));
+}
+.as-declared .react-flow__handle.lr-port-pin {
+  background: var(--surface);
+}
+.lr-port.is-in .react-flow__handle.lr-port-pin {
+  left: -5px;
+}
+.lr-port.is-out .react-flow__handle.lr-port-pin {
+  right: -1px;
+}
+
 .lr-action.st-blocked {
   background: color-mix(in srgb, var(--text) 3%, var(--surface));
 }
@@ -531,6 +637,12 @@ body {
   fill: var(--edge);
   stroke: var(--edge);
 }
+.lr-edge-head {
+  fill: var(--edge);
+}
+.react-flow__edge.is-hot .lr-edge-head {
+  fill: var(--edge-hot);
+}
 .react-flow__edge.is-hot .react-flow__arrowhead polyline {
   fill: var(--edge-hot);
   stroke: var(--edge-hot);
@@ -565,11 +677,20 @@ body {
 .lr-empty > * {
   pointer-events: auto;
 }
-.lr-history-banner {
+/* Centred over the top of the canvas: the counts, then the history banner. */
+.lr-canvas-top {
   position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 10px;
+  left: 12px;
+  right: 12px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.lr-history-banner {
   padding: 5px 12px;
   border-radius: 999px;
   background: var(--color-background-inverted);
@@ -605,6 +726,10 @@ body {
 
 /* ---- panel --------------------------------------------------------------- */
 
+/* Collapsed, the pane's column is 0 wide; its content must not spill out of it. */
+.lr-main.is-pane-collapsed .lr-panel {
+  display: none;
+}
 .lr-panel {
   background: var(--surface);
   overflow-y: auto;
@@ -776,11 +901,10 @@ body {
 
 /* ---- timeline ------------------------------------------------------------ */
 
-/* Fixed grid columns: the slider track must never change width, or the thumb
-   jumps whenever the description at the end changes. */
+/* The Live button, then the slider across the rest of the bar. */
 .lr-timeline {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr) minmax(0, 42%);
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items: center;
   column-gap: 14px;
   padding: 0 14px;
@@ -805,28 +929,6 @@ body {
 }
 .lr-tl-slider {
   min-width: 0;
-}
-.lr-tl-label {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  column-gap: 10px;
-  align-items: center;
-  min-width: 0;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-.lr-tl-n {
-  font-family: var(--mono);
-  color: var(--text-faint);
-  font-variant-numeric: tabular-nums;
-  min-width: 7ch;
-  text-align: right;
-}
-.lr-tl-text {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* ---- rich text ----------------------------------------------------------- */
@@ -1146,25 +1248,15 @@ b.lr-rt-glyph {
   color: var(--text-muted);
 }
 .lr-question {
-  padding: 8px 12px;
-  border-left: 3px solid var(--c-human);
-  border-radius: 0 var(--radius-inner) var(--radius-inner) 0;
-  background: var(--c-human-bg);
+  min-width: 0;
 }
 
 /* ---- small screens ------------------------------------------------------- */
 
-/* The top bar gives way in steps: the stats lose their labels (shown on
-   hover), then the wordmark and connection text go, then the stats, and on
-   a phone the bar wraps onto a second line rather than scrolling. */
-@media (max-width: 1280px) {
-  .lr-stat-label {
-    display: none;
-  }
-}
+/* The top bar gives way in steps: the wordmark goes, then on a phone the
+   bar wraps onto a second line rather than scrolling. */
 @media (max-width: 1100px) {
-  .lr-brand-name,
-  .lr-conn-text {
+  .lr-brand-name {
     display: none;
   }
 }
@@ -1179,9 +1271,6 @@ b.lr-rt-glyph {
   }
   .lr-top {
     padding-block: 10px;
-  }
-  .lr-stats {
-    display: none;
   }
 }
 @media (max-width: 900px) {
@@ -1213,7 +1302,8 @@ b.lr-rt-glyph {
   width: 100%;
   height: 100%;
   border-radius: 18px;
-  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  /* The body lets the canvas show through; the header bar is solid. */
+  background: color-mix(in srgb, var(--surface) 45%, transparent);
   border: 1.5px solid var(--border-strong);
   box-shadow: var(--shadow);
   transition: border-color 160ms, box-shadow 160ms, background 160ms;
@@ -1239,7 +1329,9 @@ b.lr-rt-glyph {
   padding: 0 12px 0 12px;
   cursor: grab;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  border-radius: 18px 18px 0 0;
+  /* Inside the frame's 1.5px border, so its corners follow the frame's. */
+  border-radius: 16.5px 16.5px 0 0;
+  background: var(--surface);
 }
 .lr-frame.is-collapsed .lr-frame-head {
   border-bottom: none;
@@ -1323,11 +1415,14 @@ b.lr-rt-glyph {
   overflow: auto;
   padding: 0 16px 28px;
 }
+/* The headings, then the tracks filling the rest of the board's height
+   however few cards they hold. */
 .lr-board-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(188px, 1fr));
+  grid-template-rows: auto 1fr;
   column-gap: 10px;
-  align-items: start;
+  min-height: 100%;
   min-width: 1200px;
 }
 .lr-col-head {
@@ -1358,7 +1453,6 @@ b.lr-rt-glyph {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-height: 140px;
   margin-top: 6px;
   padding: 6px;
   border-radius: var(--radius-container);

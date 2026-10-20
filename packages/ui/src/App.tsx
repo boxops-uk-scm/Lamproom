@@ -17,7 +17,6 @@ import { pixel } from '@astryxdesign/core/Resizable/utils';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Slider } from '@astryxdesign/core/Slider';
 import { Spinner } from '@astryxdesign/core/Spinner';
-import { StatusDot } from '@astryxdesign/core/StatusDot';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Token } from '@astryxdesign/core/Token';
@@ -26,7 +25,6 @@ import { useToast } from '@astryxdesign/core/Toast';
 import { VStack } from '@astryxdesign/core/VStack';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { command, createProject, fetchMe, fetchProjects, fetchStates, fetchStreamEvents, logout, signInUrl, subscribe, uploadFile, type Me, type Project } from './api';
-import { describeEvent } from './events';
 import { Board } from './board/Board';
 import { Graph } from './graph/Graph';
 import type { FrameState } from './graph/build';
@@ -39,10 +37,18 @@ import { boxopsTheme } from './theme/boxops';
 
 type ThemePref = 'auto' | 'light' | 'dark';
 type Frames = Record<string, FrameState>;
-type View = 'graph' | 'board';
+type View = 'graph' | 'ports' | 'board';
 
 /** The user's preference and the scheme in effect. Astryx's Theme applies it to the document. */
-function useTheme(): [ThemePref, 'light' | 'dark', (t: ThemePref) => void] {
+interface ThemeControl {
+  pref: ThemePref;
+  /** The scheme in effect. */
+  theme: 'light' | 'dark';
+  /** Switch to the other scheme; switching to the system's own goes back to following it. */
+  toggle: () => void;
+}
+
+function useTheme(): ThemeControl {
   const [pref, setPref] = useState<ThemePref>(() => {
     try {
       return (localStorage.getItem('lr-theme') as ThemePref) || 'auto';
@@ -66,7 +72,12 @@ function useTheme(): [ThemePref, 'light' | 'dark', (t: ThemePref) => void] {
       // ignore
     }
   }, [pref]);
-  return [pref, pref === 'auto' ? system : pref, setPref];
+  const theme = pref === 'auto' ? system : pref;
+  const toggle = useCallback(() => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setPref(next === system ? 'auto' : next);
+  }, [theme, system]);
+  return { pref, theme, toggle };
 }
 
 function loadFrames(key: string): Frames {
@@ -79,11 +90,11 @@ function loadFrames(key: string): Frames {
 }
 
 export function App() {
-  const [pref, theme, setPref] = useTheme();
+  const ui = useTheme();
   return (
-    <Theme theme={boxopsTheme} mode={pref === 'auto' ? 'system' : pref}>
+    <Theme theme={boxopsTheme} mode={ui.pref === 'auto' ? 'system' : ui.pref}>
       <ReactFlowProvider>
-        <Shell pref={pref} theme={theme} setPref={setPref} />
+        <Shell ui={ui} />
       </ReactFlowProvider>
     </Theme>
   );
@@ -92,7 +103,7 @@ export function App() {
 type Streams = Record<string, State>;
 
 /** Sign-in, then a project, then the workspace. The URL names the project: /p/owner/name. */
-function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'dark'; setPref: (t: ThemePref) => void }) {
+function Shell({ ui }: { ui: ThemeControl }) {
   const [me, setMe] = useState<Me | null>();
   const [projects, setProjects] = useState<Project[]>();
   const [route, setRoute] = useState(() => window.location.pathname);
@@ -140,14 +151,14 @@ function Shell({ pref, theme, setPref }: { pref: ThemePref; theme: 'light' | 'da
   if (!project) {
     return (
       <>
-        <Projects projects={projects} me={me} onPick={pick} onAdd={() => setAddOpen(true)} />
+        <Projects projects={projects} me={me} ui={ui} onPick={pick} onAdd={() => setAddOpen(true)} />
         {addDialog}
       </>
     );
   }
   return (
     <>
-      <Workspace key={project.id} project={project} projects={projects} me={me} onSwitch={pick} onAdd={() => setAddOpen(true)} pref={pref} theme={theme} setPref={setPref} />
+      <Workspace key={project.id} project={project} projects={projects} me={me} onSwitch={pick} onAdd={() => setAddOpen(true)} ui={ui} />
       {addDialog}
     </>
   );
@@ -177,18 +188,17 @@ function SignIn() {
 }
 
 /** The user's projects, each a GitHub repository registered on this server. */
-function Projects({ projects, me, onPick, onAdd }: { projects: Project[]; me: Me; onPick: (p: Project) => void; onAdd: () => void }) {
+function Projects({ projects, me, ui, onPick, onAdd }: { projects: Project[]; me: Me; ui: ThemeControl; onPick: (p: Project) => void; onAdd: () => void }) {
   const add = <Button label="Add project" variant="primary" size="sm" icon={<Icon name="plus" size={14} />} onClick={onAdd} />;
   return (
     <div className="lr-app">
       <header className="lr-top">
         <div className="lr-brand">
-          <span className="lr-logo" aria-hidden="true" />
           <span className="lr-brand-name">Lamproom</span>
         </div>
         <div className="lr-stats" />
         <div className="lr-tools">
-          <UserMenu me={me} />
+          <UserMenu me={me} ui={ui} />
         </div>
       </header>
       <main className="lr-gate lr-gate-main">
@@ -255,13 +265,21 @@ function AddProjectDialog({ isOpen, onClose, onAdded }: { isOpen: boolean; onClo
   );
 }
 
-function UserMenu({ me }: { me: Me }) {
+function UserMenu({ me, ui }: { me: Me; ui: ThemeControl }) {
   const items = [
     { id: 'who', label: me.user.name ?? me.user.login, description: me.mode === 'dev' ? 'development sign-in' : `GitHub · ${me.user.login}`, isDisabled: true },
+    // Names the scheme in effect; choosing it switches to the other.
+    {
+      id: 'theme',
+      label: ui.theme === 'dark' ? 'Dark theme' : 'Light theme',
+      description: ui.pref === 'auto' ? 'Following your system' : `Switch to ${ui.theme === 'dark' ? 'light' : 'dark'}`,
+      icon: <Icon name={ui.theme === 'dark' ? 'moon' : 'sun'} size={14} />,
+      onClick: ui.toggle,
+      hasCloseOnSelect: false,
+    },
     ...(me.mode === 'dev'
       ? []
       : [
-          { type: 'divider' as const },
           { id: 'out', label: 'Sign out', icon: <Icon name="signout" size={14} />, onClick: () => void logout().then(() => window.location.assign('/')) },
         ]),
   ];
@@ -284,24 +302,19 @@ function Workspace({
   me,
   onSwitch,
   onAdd,
-  pref,
-  theme,
-  setPref,
+  ui,
 }: {
   project: Project;
   projects: Project[];
   me: Me;
   onSwitch: (p: Project) => void;
   onAdd: () => void;
-  pref: ThemePref;
-  theme: 'light' | 'dark';
-  setPref: (t: ThemePref) => void;
+  ui: ThemeControl;
 }) {
+  const { theme } = ui;
   // One projected state per seam stream, kept current by the live feed.
   const [streams, setStreams] = useState<Streams>({});
   const [head, setHead] = useState<number | null>(null);
-  const [lastLive, setLastLive] = useState<Event>();
-  const [connected, setConnected] = useState(false);
   // Events per stream, fetched when a seam is focused, for scrubbing.
   const cache = useRef<Record<string, Event[]>>({});
   const pending = useRef<Record<string, Event[]>>({});
@@ -316,21 +329,33 @@ function Workspace({
   const [fitKey, setFitKey] = useState(0);
   const [view, setView] = useState<View>(() => {
     try {
-      return localStorage.getItem('lr-view') === 'board' ? 'board' : 'graph';
+      const v = localStorage.getItem('lr-view');
+      return v === 'board' || v === 'ports' ? v : 'graph';
     } catch {
       return 'graph';
     }
   });
   const showToast = useToast();
-  // The details pane resizes from its left edge; Astryx keeps the width in localStorage.
+  // The details pane resizes from its left edge and collapses away on a
+  // double-click there; Astryx keeps the width and collapse in localStorage.
   const mainRef = useRef<HTMLElement>(null);
   const pane = useResizable({
     defaultSize: 380,
     minSize: 300,
     maxSize: percent(60, { max: pixel(900) }),
+    collapsible: true,
     containerRef: mainRef,
     autoSaveId: 'lr-panel',
   });
+  // Picking anything to look at brings a collapsed pane back.
+  const { isCollapsed: paneCollapsed, expand: expandPane } = pane;
+  const select = useCallback(
+    (id: string | undefined) => {
+      setSelected(id);
+      if (id && paneCollapsed) expandPane();
+    },
+    [paneCollapsed, expandPane],
+  );
   useEffect(() => {
     try {
       localStorage.setItem('lr-view', view);
@@ -380,12 +405,8 @@ function Workspace({
             }
             bumpCache();
             const tail = events[events.length - 1];
-            if (tail) {
-              setHead(tail.seq!);
-              setLastLive(tail);
-            }
+            if (tail) setHead(tail.seq!);
           },
-          status: setConnected,
         });
       })
       .catch((e: Error) => showToast({ body: e.message, type: 'error' }));
@@ -590,9 +611,6 @@ function Workspace({
   }, []);
 
   const total = focusIds ? focusSeams.reduce((n, w) => n + w.actions.length, 0) : Object.keys(state.actions).length;
-  const lastEvent = focusIdx && focusAll ? focusAll[focusIdx[(cursor ?? focusIdx.length) - 1] ?? -1] : lastLive;
-  const shown = focusIdx ? (cursor ?? focusIdx.length) : null;
-  const lastText = lastEvent ? describeEvent(state, lastEvent) : head === null ? 'loading' : head === 0 ? 'empty log' : `live · ${head} events`;
   const wfOptions = useMemo(() => allSeams.list.map((w) => ({ value: w.id, label: w.title })), [allSeams]);
   const projectOptions = useMemo(
     () => [...projects.map((p) => ({ value: p.id, label: `${p.owner}/${p.name}` })), { value: '__add', label: 'Add project…' }],
@@ -613,8 +631,13 @@ function Workspace({
     <div className="lr-app">
       <header className="lr-top">
         <div className="lr-brand">
-          <span className="lr-logo" aria-hidden="true" />
           <span className="lr-brand-name">Lamproom</span>
+          {/* Straight after the name, so nothing beside it can move it. */}
+          <SegmentedControl label="View" value={view} onChange={(v) => setView(v as View)} size="sm">
+            <SegmentedControlItem value="graph" label="Graph" icon={<Icon name="graph" size={14} />} />
+            <SegmentedControlItem value="ports" label="Ports" icon={<Icon name="ports" size={14} />} />
+            <SegmentedControlItem value="board" label="Board" icon={<Icon name="board" size={14} />} />
+          </SegmentedControl>
           <span className="lr-top-project">
             <Selector
               label="Project"
@@ -651,65 +674,17 @@ function Workspace({
             />
           </span>
         </div>
-        <div className="lr-stats">
-          <Stat label="ready for agents" value={sum.agentFace} tone="ready" />
-          <Stat label="waiting on you" value={sum.humanQueue} tone="human" />
-          <Stat label="active" value={sum.actions.active} tone="active" />
-          <Stat label="done" value={`${sum.actions.done}/${total}`} tone="done" />
-          <Stat label="undecomposed large" value={sum.undecomposedLarge} tone="muted" title="Large or unsized leaf actions: the honest measure of remaining uncertainty" />
-        </div>
         <div className="lr-tools">
-          <Hint content={connected ? 'Connected to the server' : 'Disconnected'} placement="below">
-            <span className={cx('lr-conn', connected ? 'is-on' : 'is-off')}>
-              <StatusDot
-                variant={connected ? 'success' : 'neutral'}
-                label={connected ? 'Connected to the server' : 'Disconnected'}
-                isPulsing={connected}
-              />
-              <span className="lr-conn-text">{connected ? 'live' : 'offline'}</span>
-            </span>
-          </Hint>
           {newGoal}
-          <SegmentedControl label="View" value={view} onChange={(v) => setView(v as View)} size="sm">
-            <SegmentedControlItem value="graph" label="Graph" icon={<Icon name="graph" size={14} />} />
-            <SegmentedControlItem value="board" label="Board" icon={<Icon name="board" size={14} />} />
-          </SegmentedControl>
-          {view === 'graph' && (
-            <>
-              <IconButton
-                label="Fit view"
-                tooltip="Fit view"
-                variant="ghost"
-                size="sm"
-                icon={<Icon name="fit" size={16} />}
-                onClick={() => setFitKey((k) => k + 1)}
-              />
-              <IconButton
-                label="Tidy"
-                tooltip="Tidy: return unpinned seams to the automatic stack"
-                variant="ghost"
-                size="sm"
-                icon={<Icon name="tidy" size={16} />}
-                onClick={tidyFrames}
-              />
-            </>
-          )}
-          <IconButton
-            label={`Theme: ${pref}`}
-            tooltip={`Theme: ${pref}. Click to change`}
-            variant="ghost"
-            size="sm"
-            icon={<Icon name={pref === 'auto' ? 'auto' : theme === 'dark' ? 'moon' : 'sun'} size={16} />}
-            onClick={() => setPref(pref === 'auto' ? 'light' : pref === 'light' ? 'dark' : 'auto')}
-          />
-          <UserMenu me={me} />
+          <UserMenu me={me} ui={ui} />
         </div>
       </header>
 
-      <main ref={mainRef} className="lr-main" style={{ '--panel-w': `${pane.size}px` } as CSSProperties}>
+      <main ref={mainRef} className={cx('lr-main', pane.isCollapsed && 'is-pane-collapsed')} style={{ '--panel-w': `${pane.isCollapsed ? 0 : pane.size}px` } as CSSProperties}>
         <div className="lr-canvas">
-          {view === 'graph' ? (
+          {view !== 'board' ? (
             <Graph
+              ports={view === 'ports'}
               state={state}
               collapsedGroups={collapsedGroups}
               frames={frames}
@@ -718,15 +693,16 @@ function Workspace({
               theme={theme}
               fitKey={fitKey}
               replaying={!live}
-              onSelect={setSelected}
+              onSelect={select}
               onToggleGroup={toggleGroup}
               onToggleFrame={toggleFrame}
               onPinFrame={pinFrame}
               onMoveFrame={moveFrame}
               onFocus={toggleFocus}
+              onTidy={tidyFrames}
             />
           ) : (
-            <Board state={state} focus={focus} selected={selected} onSelect={setSelected} onFocus={toggleFocus} />
+            <Board state={state} focus={focus} selected={selected} onSelect={select} onFocus={toggleFocus} />
           )}
           {head !== null && state.order.length === 0 && (
             <div className="lr-empty">
@@ -738,15 +714,36 @@ function Workspace({
               />
             </div>
           )}
-          {!live && (
-            <div className="lr-history-banner">
-              Viewing history · event {cursor} of {max} in “{focusLabel}”
+          {/* The board's column headings carry its counts; the canvas shows them over the top. */}
+          {(view !== 'board' || !live) && (
+            <div className="lr-canvas-top">
+              {view !== 'board' && (
+                <div className="lr-stats">
+                  <Stat label="ready for agents" value={sum.agentFace} tone="ready" />
+                  <Stat label="waiting on you" value={sum.humanQueue} tone="human" />
+                  <Stat label="active" value={sum.actions.active} tone="active" />
+                  <Stat label="done" value={`${sum.actions.done}/${total}`} tone="done" />
+                  <Stat label="undecomposed large" value={sum.undecomposedLarge} tone="muted" title="Large or unsized leaf actions: the honest measure of remaining uncertainty" />
+                </div>
+              )}
+              {!live && (
+                <div className="lr-history-banner">
+                  Viewing history · event {cursor} of {max} in “{focusLabel}”
+                </div>
+              )}
             </div>
           )}
-          {view === 'graph' && <Legend />}
+          {view !== 'board' && <Legend />}
         </div>
-        <ResizeHandle className="lr-splitter" direction="horizontal" isReversed hasDivider label="Resize the details pane" resizable={pane.props} />
-        <Panel state={state} selected={selected} human={me.actor} live={live} onSelect={setSelected} run={run} upload={upload} />
+        <ResizeHandle
+          className="lr-splitter"
+          direction="horizontal"
+          isReversed
+          hasDivider
+          label="Resize the details pane; double-click to hide or show it"
+          resizable={pane.props}
+        />
+        <Panel state={state} selected={selected} human={me.actor} live={live} onSelect={select} run={run} upload={upload} />
       </main>
 
       <footer className="lr-timeline">
@@ -774,18 +771,6 @@ function Workspace({
             />
           </div>
         </Hint>
-        <span className="lr-tl-label">
-          {shown !== null && (
-            <span className="lr-tl-n">
-              #{shown}/{max}
-            </span>
-          )}
-          <Hint content={lastText}>
-            <span className="lr-tl-text">
-              {lastText}
-            </span>
-          </Hint>
-        </span>
       </footer>
 
       <GoalDialog
@@ -814,6 +799,7 @@ function Stat({ label, value, tone, title }: { label: string; value: number | st
   return (
     <Hint content={title ?? label} placement="below">
       <div className={cx('lr-stat', `tone-${tone}`)}>
+        <span className="lr-dot" />
         <span className="lr-stat-value">{value}</span>
         <span className="lr-stat-label">{label}</span>
       </div>

@@ -134,6 +134,9 @@ export const boxopsTheme = defineTheme({
     '--lr-accent-subtle': ld(bx.semanticColor.accentSubtle),
     '--lr-accent-selected-hover': ld(bx.semanticColor.accentSelectedHover),
     '--lr-background-input': ld(bx.backgroundColor.input),
+    // The graph canvas in dark: the palette's darkest slate, a step below the
+    // surface so the cards and seam frames sit up off it.
+    '--lr-background-canvas-dark': p.gray1100,
   },
   components: {
     // Boxops tooltips are inverted: dark on light, light on dark.

@@ -35,34 +35,52 @@ export function Hint({
  * ignores the transforms React Flow places nodes with, so every canvas
  * tooltip would land at the viewport origin. This measures the element on
  * hover and anchors the tooltip to a fixed ghost outside the canvas instead.
+ *
+ * `exclude` names the parts of the element that carry hints of their own;
+ * while the pointer is over one of them this hint stays closed.
  */
-export function CanvasHint({ content, placement = 'above', anchorRef }: { content: ReactNode; placement?: Placement; anchorRef: RefObject<HTMLElement | null> }) {
+export function CanvasHint({
+  content,
+  placement = 'above',
+  anchorRef,
+  exclude,
+}: {
+  content: ReactNode;
+  placement?: Placement;
+  anchorRef: RefObject<HTMLElement | null>;
+  exclude?: string;
+}) {
   const ghost = useRef<HTMLSpanElement>(null);
   const [rect, setRect] = useState<DOMRect | null>(null);
   useEffect(() => {
     const el = anchorRef.current;
     if (!el) return;
     let timer: number | undefined;
-    const show = () => {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => setRect(el.getBoundingClientRect()), DELAY);
-    };
+    // Waiting out the delay, or open: moving between children leaves it be.
+    let armed = false;
     const hide = () => {
       window.clearTimeout(timer);
+      armed = false;
       setRect(null);
     };
-    el.addEventListener('pointerenter', show);
+    const show = (e: PointerEvent) => {
+      if (exclude && e.target instanceof Element && e.target.closest(exclude)) return hide();
+      if (armed) return;
+      armed = true;
+      timer = window.setTimeout(() => setRect(el.getBoundingClientRect()), DELAY);
+    };
+    el.addEventListener('pointerover', show);
     el.addEventListener('pointerleave', hide);
     el.addEventListener('pointerdown', hide);
     window.addEventListener('wheel', hide, { passive: true });
     return () => {
       window.clearTimeout(timer);
-      el.removeEventListener('pointerenter', show);
+      el.removeEventListener('pointerover', show);
       el.removeEventListener('pointerleave', hide);
       el.removeEventListener('pointerdown', hide);
       window.removeEventListener('wheel', hide);
     };
-  }, [anchorRef]);
+  }, [anchorRef, exclude]);
   if (!content) return null;
   return (
     <>
