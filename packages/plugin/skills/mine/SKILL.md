@@ -5,11 +5,17 @@ description: Mine the coal face of this project's seams in Lamproom. Takes the n
 
 # Mining the coal face
 
-You are working a seam that Lamproom tracks. A seam is one goal and everything connected to it; the tracker is a hypergraph: artefacts are the things delivered, actions are the work that turns input artefacts into output artefacts. You report through the Lamproom tools (status, inspect, propose, evaluate, claim, release, progress, attach, complete, ask, amend, abandon, restore, reopen, declare). The tracker observes; it does not do work for you.
+You are working a seam that Lamproom tracks. A seam is one goal and everything connected to it; the tracker is a hypergraph: artefacts are the things delivered, actions are the work that turns input artefacts into output artefacts. You report through the Lamproom tools (status, inspect, propose, evaluate, claim, release, progress, attach, comment, complete, ask, amend, abandon, restore, reopen, declare). The tracker observes; it does not do work for you.
 
 Arguments given with this skill: $ARGUMENTS
 
 Titles are one line of plain text. Everything else you write to the tracker, descriptions, criteria, rationale, question context, notes and reasons, is Markdown: use lists, emphasis, inline code and links where they help a human reading it in the UI.
+
+## Comments
+
+Actions and artefacts carry comments, like tickets. Humans use them to steer work that is already planned ("use magic links", "keep this PR small", "the plan misses the migration"), so they are part of the brief: `status` and `inspect` show the comments on each action and on its inputs and outputs, and a human's comment outranks your own earlier evaluation. When you act on one, reply to it (`comment` with `replyTo`) saying what you did; when you disagree, say so in a reply rather than ignoring it, and `ask` if it blocks you.
+
+Comment yourself when you learn something the next reader of an action or artefact needs and that is not a progress step: a decision and its reason, a constraint found, a caveat on a delivered artefact, a review you could not relay. Links go in the Markdown; files that back it up (a screenshot, a failing test's log) go in `files` as local paths. When a comment has attachments, `inspect` lists them and the `attachment` tool downloads one so you can read it.
 
 ## Branches, worktrees and pull requests
 
@@ -29,7 +35,7 @@ Each goal is its own seam, and seams never share edges: an action's inputs must 
 ## The loop
 
 1. Call `status`. Pick actions from the coal face, oldest first unless something blocks others. Take several when they are independent: up to four can be implemented at once.
-2. `claim` each, then `inspect` it and its parent if any, so you evaluate in context.
+2. `claim` each, then `inspect` it and its parent if any, so you evaluate in context. Read the comments on it and on its inputs: they may change the plan.
 3. Evaluate it against this frame and record the result with `evaluate`:
    - judgement: implement, decompose, yield, or abandon
    - size: XS, S, M, L, or XL
@@ -51,7 +57,7 @@ Give each subagent everything it needs, since it sees none of this conversation:
 
 1. `git fetch origin`, then `git switch -c <branch> <base>`.
 2. Implement the action, meeting every criterion and nothing beyond it. Follow the repository's conventions and run its tests, linters and type checks; fix what fails.
-3. Post a short `progress` note on the action at meaningful steps, saying what was done and what was found.
+3. Post a short `progress` note on the action at meaningful steps, saying what was done and what was found. Follow the comments on the action and its artefacts (include them in the brief); `comment` on the output artefact with anything a reviewer should know, linking test runs and attaching logs or screenshots as files.
 4. Commit, `git push -u origin <branch>`, open the PR, and `attach` a version to each output artefact.
 5. Not call `complete`, `claim` or `release`, and return the PR URL, the head SHA, the worktree path, and anything it could not do.
 

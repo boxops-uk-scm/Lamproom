@@ -94,6 +94,7 @@ describe('one seam per stream', () => {
 function entity(e: Event): string {
   if (e.type === 'artefact.declared') return e.artefact.id;
   if (e.type === 'action.proposed') return e.action.id;
+  if (e.type === 'comment.added') return e.targetId;
   return 'artefactId' in e ? e.artefactId : e.actionId;
 }
 

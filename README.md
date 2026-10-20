@@ -101,7 +101,21 @@ lamproom status
 lamproom answer <questionId> "15 minutes"
 lamproom review <artefactId> accept
 lamproom review <artefactId> reject "no tests"
+lamproom comment <id> "split the migration out" --attach failing-run.log
 ```
+
+Any action or artefact takes comments, the way a ticket does: from the UI's
+panel, from `lamproom comment`, or from an agent through the `comment` tool,
+with replies. Links go in the Markdown; files (screenshots, logs, up to
+10 MB each) are attached from the editor's paperclip, by pasting or dropping
+them, with `--attach <file>`, or by an agent naming local paths. The server
+keeps them with the project, serves them only to its members, and opens only
+images in the browser. Agents fetch one with the `attachment` tool to read it. A comment changes no status. It is context for whoever picks the
+work up next: the coal face an agent reads lists the latest comments on each
+action and on its inputs and outputs, a human's always among them, so a note
+on a plan or a pull request steers the next mining run. The turn tracker
+comments too, when a turn found something a later reader needs that is not
+progress.
 
 You do not have to run the skill for chat work to show up. With the plugin
 loaded, every turn of an ordinary session is checked when it ends, by the

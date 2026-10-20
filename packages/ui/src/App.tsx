@@ -25,7 +25,7 @@ import { Theme } from '@astryxdesign/core/theme';
 import { useToast } from '@astryxdesign/core/Toast';
 import { VStack } from '@astryxdesign/core/VStack';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type FormEvent } from 'react';
-import { command, createProject, fetchMe, fetchProjects, fetchStates, fetchStreamEvents, logout, signInUrl, subscribe, type Me, type Project } from './api';
+import { command, createProject, fetchMe, fetchProjects, fetchStates, fetchStreamEvents, logout, signInUrl, subscribe, uploadFile, type Me, type Project } from './api';
 import { describeEvent } from './events';
 import { Board } from './board/Board';
 import { Graph } from './graph/Graph';
@@ -555,6 +555,8 @@ function Workspace({
     [proj.id, showToast],
   );
 
+  const upload = useCallback((file: File) => uploadFile(proj.id, file), [proj.id]);
+
   const toggleGroup = useCallback((id: string) => {
     setCollapsedGroups((prevSet) => {
       const next = new Set(prevSet);
@@ -744,7 +746,7 @@ function Workspace({
           {view === 'graph' && <Legend />}
         </div>
         <ResizeHandle className="lr-splitter" direction="horizontal" isReversed hasDivider label="Resize the details pane" resizable={pane.props} />
-        <Panel state={state} selected={selected} human={me.actor} live={live} onSelect={setSelected} run={run} />
+        <Panel state={state} selected={selected} human={me.actor} live={live} onSelect={setSelected} run={run} upload={upload} />
       </main>
 
       <footer className="lr-timeline">

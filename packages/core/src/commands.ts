@@ -3,8 +3,8 @@
 // log stays self-contained: every expansion is recorded as ordinary events.
 
 import { validateFragment, type Fragment } from './fragment.js';
-import { newActionId, newArtefactId, newEventId } from './ids.js';
-import { joinRichText } from './richtext.js';
+import { newActionId, newArtefactId, newCommentId, newEventId } from './ids.js';
+import { isBlank, joinRichText } from './richtext.js';
 import { fill } from './policy.js';
 import { current } from './project.js';
 import { streamOf, seams } from './seams.js';
@@ -12,6 +12,7 @@ import {
   SCHEMA_VERSION,
   type ActionState,
   type Actor,
+  type Attachment,
   type ArtefactState,
   type Evaluation,
   type Event,
@@ -553,4 +554,52 @@ export function review(
     events.push(ev(ctx, { type: 'artefact.accepted', artefactId: a.id, ref, note: joinRichText(input.notes) }));
   }
   return { events, warnings: [] };
+}
+
+// ---- comments -----------------------------------------------------------
+
+export interface CommentInput {
+  /** The action or artefact commented on. */
+  targetId: string;
+  body: string;
+  attachments?: Attachment[];
+  replyTo?: string;
+}
+
+/**
+ * Comment on an action or artefact. Anyone may, human or agent, at any
+ * status: a comment records context and changes nothing else, so the next
+ * actor to pick the work up reads it alongside the criteria.
+ */
+export function comment(ctx: Ctx, input: CommentInput): Result & { commentId: string } {
+  const target = ctx.state.actions[input.targetId] ?? ctx.state.artefacts[input.targetId];
+  if (!target) throw new CommandError(`unknown action or artefact ${input.targetId}`);
+  if (ctx.onBehalfOf) throw new CommandError('comments cannot be relayed; quote the human in your own comment');
+  const attachments = (input.attachments ?? [])
+    .map((a): Attachment => ({
+      ref: a.ref?.trim() ?? '',
+      title: a.title?.trim() || undefined,
+      type: a.type || undefined,
+      size: typeof a.size === 'number' ? a.size : undefined,
+    }))
+    .filter((a) => a.ref);
+  if (isBlank(input.body) && !attachments.length) throw new CommandError('a comment needs a body or an attachment');
+  if (input.replyTo && !target.comments.some((c) => c.id === input.replyTo)) {
+    throw new CommandError(`${input.replyTo} is not a comment on ${target.id}`);
+  }
+  const commentId = newCommentId();
+  return {
+    events: [
+      ev(ctx, {
+        type: 'comment.added',
+        targetId: target.id,
+        commentId,
+        body: input.body ?? '',
+        attachments: attachments.length ? attachments : undefined,
+        replyTo: input.replyTo,
+      }),
+    ],
+    warnings: [],
+    commentId,
+  };
 }

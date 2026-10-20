@@ -20,7 +20,7 @@ const CLAUDE = process.env.LAMPROOM_CLAUDE_BIN ?? 'claude';
 const SKIP_CONFIDENCE = 0.6;
 
 /** The reporting verbs the tracker may use. Judgement calls stay with the mine skill and with humans. */
-const TRACKER_TOOLS = ['status', 'inspect', 'propose', 'claim', 'release', 'progress', 'attach', 'complete', 'declare'];
+const TRACKER_TOOLS = ['status', 'inspect', 'propose', 'claim', 'release', 'progress', 'attach', 'comment', 'complete', 'declare'];
 
 /** Per-call overrides. The prompt paths are what makes a candidate prompt testable. */
 export interface TierOptions {

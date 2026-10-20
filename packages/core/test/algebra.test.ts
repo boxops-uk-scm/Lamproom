@@ -7,6 +7,8 @@ import {
   ask,
   claim,
   coalFace,
+  comment,
+  describeAction,
   complete,
   evaluate,
   humanQueue,
@@ -310,5 +312,49 @@ describe('undo', () => {
     expect(t.status).toBe('ready');
     expect(m.state.artefacts[pr]!.versions).toHaveLength(1);
     expect(() => m.run(human, (ctx) => reopen(ctx, { actionId: goal }))).toThrow(/not completed/);
+  });
+});
+
+describe('comments', () => {
+  it('attach to actions and artefacts without moving status', () => {
+    const m = new Mem();
+    const r = seed(m);
+    const goal = r.actions[0]!;
+    const pr = goal.outputs[0]!;
+    const before = m.state.actions[goal.id]!.status;
+    const c = m.run(human, (ctx) => comment(ctx, { targetId: goal.id, body: 'Use **magic links**, not passwords.' }));
+    m.run(agent, (ctx) =>
+      comment(ctx, {
+        targetId: pr,
+        body: 'CI log for the flaky run',
+        attachments: [{ ref: 'https://ci.example/run/7', title: 'run 7' }],
+      }),
+    );
+    m.run(agent, (ctx) => comment(ctx, { targetId: goal.id, body: 'Noted.', replyTo: c.commentId }));
+    const s = m.state;
+    expect(s.actions[goal.id]!.status).toBe(before);
+    expect(s.actions[goal.id]!.comments.map((x) => x.by.id)).toEqual(['human:tom', 'agent:a1']);
+    expect(s.actions[goal.id]!.comments[1]!.replyTo).toBe(c.commentId);
+    expect(s.artefacts[pr]!.comments[0]!.attachments).toEqual([{ ref: 'https://ci.example/run/7', title: 'run 7' }]);
+  });
+
+  it('reach the agent picking the action up', () => {
+    const m = new Mem();
+    const goal = seed(m).actions[0]!;
+    m.run(human, (ctx) => comment(ctx, { targetId: goal.id, body: 'Use magic links' }));
+    m.run(human, (ctx) => comment(ctx, { targetId: goal.outputs[0]!, body: 'Keep the PR under 400 lines' }));
+    const text = describeAction(m.state, m.state.actions[goal.id]!, true);
+    expect(text).toContain('human human:tom: Use magic links');
+    expect(text).toContain(`comments on ${goal.outputs[0]}`);
+    expect(text).toContain('Keep the PR under 400 lines');
+  });
+
+  it('refuse empty, misdirected and relayed comments', () => {
+    const m = new Mem();
+    const goal = seed(m).actions[0]!;
+    expect(() => m.run(human, (ctx) => comment(ctx, { targetId: goal.id, body: '  ' }))).toThrow(/body or an attachment/);
+    expect(() => m.run(human, (ctx) => comment(ctx, { targetId: 't-nope', body: 'x' }))).toThrow(/unknown/);
+    expect(() => m.run(human, (ctx) => comment(ctx, { targetId: goal.id, body: 'x', replyTo: 'c-nope' }))).toThrow(/not a comment/);
+    expect(() => m.run(agent, (ctx) => comment(ctx, { targetId: goal.id, body: 'x' }), human)).toThrow(/relayed/);
   });
 });

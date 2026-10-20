@@ -8,6 +8,7 @@
 // carry on past a propose and show the rest of what it would have done.
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -117,6 +118,7 @@ function pretend(command: string, args: Record<string, unknown>): CommandRespons
     }));
   }
   if (command === 'declare') r.id = dryId('a');
+  if (command === 'comment') r.commentId = `c-dry${++provisional}`;
   if (command === 'amend') r.addedOutputs = ((args.addOutputs as unknown[]) ?? []).map(() => dryId('a'));
   if (command === 'ask') {
     r.questionId = dryId('a');
@@ -193,7 +195,7 @@ server.registerTool(
   'inspect',
   {
     title: 'Inspect an action or artefact',
-    description: 'Full detail for one action (t-...) or artefact (a-...): description, criteria, evaluation, inputs and outputs, children, versions, and history.',
+    description: 'Full detail for one action (t-...) or artefact (a-...): description, criteria, evaluation, inputs and outputs, children, versions, comments, and history.',
     inputSchema: { id: z.string() },
   },
   async ({ id }) => {
@@ -216,6 +218,7 @@ server.registerTool(
       if (t.description && t.description.includes('\n')) lines.push('  description (Markdown):', ...t.description.split('\n').map((l) => `    ${l}`));
       lines.push(`  history:`);
       for (const l of t.log) lines.push(`    #${l.seq} ${l.actor.id} ${l.type}${l.note ? `: ${l.note}` : ''}`);
+      lines.push(...fullComments(t.comments));
       return text(lines.join('\n'));
     }
     const a = s.artefacts[id];
@@ -230,11 +233,24 @@ server.registerTool(
       const consumers = Object.values(s.actions).filter((x) => x.inputs.includes(a.id)).map((x) => x.id);
       if (producers.length) lines.push(`  produced by: ${producers.join(', ')}`);
       if (consumers.length) lines.push(`  consumed by: ${consumers.join(', ')}`);
+      lines.push(...fullComments(a.comments));
       return text(lines.join('\n'));
     }
     return fail(`no action or artefact with id ${id}`);
   },
 );
+
+/** Every comment in full, Markdown kept, for inspect. The listings above show only the latest, flattened. */
+function fullComments(comments: core.Comment[]): string[] {
+  if (!comments.length) return [];
+  const lines = ['  all comments (oldest first):'];
+  for (const c of comments) {
+    lines.push(`    ${c.id}${c.replyTo ? ` re ${c.replyTo}` : ''} #${c.seq} ${c.by.kind} ${c.by.name ?? c.by.id}${c.via ? ` via ${c.via.id}` : ''} at ${c.ts}:`);
+    lines.push(...c.body.split('\n').map((l) => `      ${l}`));
+    for (const a of c.attachments ?? []) lines.push(`      attached: ${a.title ?? 'file'}${a.type ? ` (${a.type})` : ''}, ref ${a.ref}; fetch it with the attachment tool`);
+  }
+  return lines;
+}
 
 server.registerTool(
   'propose',
@@ -326,6 +342,66 @@ server.registerTool(
     inputSchema: { artefactId: z.string(), ref: z.string(), note: z.string().optional().describe('Markdown') },
   },
   async (args) => mutate('attach', args, () => `Attached version to ${args.artefactId}.`),
+);
+
+server.registerTool(
+  'comment',
+  {
+    title: 'Comment on an action or artefact',
+    description:
+      'Add a comment to any action (t-...) or artefact (a-...), like a comment on a ticket: findings, a decision taken and why, a caveat for whoever picks the work up next, or a reply to a human\'s comment. Links go in the Markdown body. Files (a screenshot, a log, a report) go in files as local paths and are uploaded with the comment. Comments change no status and need no claim. Progress on an action you hold still goes through progress; use comment for anything a later reader of that action or artefact should know. Never put a human\'s words in a comment as though they wrote it; quote them.',
+    inputSchema: {
+      targetId: z.string().describe('the action or artefact id'),
+      body: z.string().describe('Markdown'),
+      files: z.array(z.string()).optional().describe('paths of local files to attach, at most 10 MB each'),
+      replyTo: z.string().optional().describe('id (c-...) of the comment on the same target this answers'),
+    },
+  },
+  async ({ files, ...args }) => {
+    const paths = (files ?? []).map((f) => path.resolve(process.cwd(), f));
+    const missing = paths.find((f) => !fs.existsSync(f) || !fs.statSync(f).isFile());
+    if (missing) return fail(`no such file ${missing}`);
+    let attachments: core.Attachment[] = [];
+    if (paths.length && !rehearsal()) {
+      try {
+        const p = await project();
+        for (const f of paths) attachments.push(await client.uploadFile(p.id, f));
+      } catch (e) {
+        return fail(explain(e));
+      }
+    } else {
+      // A rehearsal uploads nothing; the trace names the files.
+      attachments = paths.map((f) => ({ ref: f, title: path.basename(f) }));
+    }
+    return mutate('comment', { ...args, attachments: attachments.length ? attachments : undefined }, (r) => `Commented on ${args.targetId} as ${String(r.commentId)}.`);
+  },
+);
+
+server.registerTool(
+  'attachment',
+  {
+    title: 'Fetch a comment attachment',
+    description:
+      'Download a file attached to a comment, so you can read it: inspect lists each attachment with its ref (/api/projects/.../files/f-...). Saves it to a temporary directory and returns the path; read that path with your file tools (images included).',
+    inputSchema: { ref: z.string().describe('the attachment ref as inspect shows it') },
+  },
+  async ({ ref }) => {
+    trace(rehearsal()?.trace, { kind: 'read', tool: 'attachment', args: { ref } });
+    try {
+      const s = await state();
+      const found = [...Object.values(s.actions), ...Object.values(s.artefacts)]
+        .flatMap((x) => x.comments.flatMap((c) => c.attachments ?? []))
+        .find((a) => a.ref === ref);
+      if (!found) return fail(`no comment attachment with ref ${ref}`);
+      const data = await client.downloadFile(ref);
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lamproom-'));
+      const file = path.join(dir, path.basename(found.title ?? ref).replace(/[^\w.-]+/g, '_') || 'attachment');
+      fs.writeFileSync(file, data);
+      return text(`Saved ${found.title ?? ref} (${data.byteLength} bytes${found.type ? `, ${found.type}` : ''}) to ${file}`);
+    } catch (e) {
+      return fail(explain(e));
+    }
+  },
 );
 
 server.registerTool(

@@ -11,3 +11,5 @@ function random(n: number): string {
 export const newArtefactId = (): string => `a-${random(5)}`;
 export const newActionId = (): string => `t-${random(5)}`;
 export const newEventId = (): string => `e-${random(10)}`;
+export const newCommentId = (): string => `c-${random(6)}`;
+export const newFileId = (): string => `f-${random(10)}`;

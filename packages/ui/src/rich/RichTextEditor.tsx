@@ -3,7 +3,8 @@
 // of the frame. Typing Markdown works too: `- `, `1. `, `# `, `> `, ``` and
 // **bold** become structure as you type, typed addresses become links, and a
 // link pasted over a selection links it. Cmd or Ctrl+Enter submits where a
-// form wants it.
+// form wants it. Where the form takes files, the toolbar has an attach button
+// and files pasted or dropped onto the editor are handed over the same way.
 
 import { Field } from '@astryxdesign/core/Field';
 import type { RichText } from '@lamproom/core';
@@ -135,6 +136,8 @@ export interface RichTextEditorProps {
   hasAutoFocus?: boolean;
   /** Cmd or Ctrl+Enter. */
   onSubmit?: () => void;
+  /** Files chosen from the toolbar, pasted or dropped. Without it the editor takes none. */
+  onFiles?: (files: File[]) => void;
   width?: number | string;
 }
 
@@ -151,9 +154,17 @@ export function RichTextEditor({
   isDisabled = false,
   hasAutoFocus,
   onSubmit,
+  onFiles,
   width,
 }: RichTextEditorProps) {
   const id = useId();
+  const picker = useRef<HTMLInputElement>(null);
+  const take = (list: FileList | null | undefined) => {
+    const files = [...(list ?? [])];
+    if (!files.length || !onFiles || isDisabled) return false;
+    onFiles(files);
+    return true;
+  };
   const initial = useRef(value);
   const initialConfig: InitialConfigType = {
     namespace: 'lamproom',
@@ -177,9 +188,34 @@ export function RichTextEditor({
       isDisabled={isDisabled}
       width={width}
     >
-      <div className={cx('lr-rt', isDisabled && 'is-disabled')} style={{ '--lr-rt-rows': rows } as CSSProperties}>
+      <div
+        className={cx('lr-rt', isDisabled && 'is-disabled')}
+        style={{ '--lr-rt-rows': rows } as CSSProperties}
+        // Capture phase, so a pasted file never reaches Lexical as an empty paste.
+        onPasteCapture={(e) => {
+          if (take(e.clipboardData?.files)) e.preventDefault();
+        }}
+        onDragOver={(e) => {
+          if (onFiles && e.dataTransfer.types.includes('Files')) e.preventDefault();
+        }}
+        onDropCapture={(e) => {
+          if (take(e.dataTransfer?.files)) e.preventDefault();
+        }}
+      >
+        {onFiles && (
+          <input
+            ref={picker}
+            type="file"
+            multiple
+            hidden
+            onChange={(e) => {
+              take(e.currentTarget.files);
+              e.currentTarget.value = '';
+            }}
+          />
+        )}
         <LexicalComposer initialConfig={initialConfig}>
-          <Toolbar isDisabled={isDisabled} />
+          <Toolbar isDisabled={isDisabled} onAttach={onFiles ? () => picker.current?.click() : undefined} />
           <div className="lr-rt-body">
             <RichTextPlugin
               contentEditable={

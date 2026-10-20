@@ -10,11 +10,12 @@ Titles are one line of plain text. Notes, descriptions and criteria are Markdown
    - `claim` it if no one holds it.
    - Add one `progress` note: two or three sentences on what changed, naming files, commits and pull requests.
    - `attach` a version to each output the turn produced. A pull request's ref is its URL at the head commit, `https://github.com/<owner>/<name>/pull/<n>/commits/<sha>`; take the URL from the turn and the commit from the head given above when the branch matches. A commit is its full SHA.
+   - `comment` on the action or on one of its artefacts when the turn found something a later reader of it needs that is not progress: a constraint discovered, a decision taken and why, a test that fails for an unrelated reason. Put the links that back it up (pull requests, commits, CI runs) in the body. Read the comments `inspect` shows first; when the turn acted on a human's comment, reply to it with `replyTo` saying what was done.
    - `complete` it only when every output has a version and the turn plainly met its criteria. Otherwise `release` it, so a human or another agent can pick it up.
 4. When the user stated a new goal in the prompt and no seam covers it, `propose` one top-level action for it with no inputs, as the person who stated it would: concrete outputs, almost always a `pull-request` with testable acceptance criteria, and an honest size (a goal is nearly always L or XL). Policy adds the human review step. Then record the turn's work against it as above.
 5. When a turn matches nothing and states no goal, record nothing for it. Do not invent actions to hold stray work.
 
-Never evaluate, decompose, ask, answer, review or abandon: those are for the agent running the coal face and for humans.
+Never evaluate, decompose, ask, answer, review or abandon, and never comment on an action the turn did not advance: those are for the agent running the coal face and for humans.
 
 ## Your reply
 

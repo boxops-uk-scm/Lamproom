@@ -39,6 +39,9 @@ import {
   GithubLogo,
   SignOut,
   FolderSimple,
+  ChatText,
+  File as FileIcon,
+  Image as ImageIcon,
 } from '@phosphor-icons/react';
 import React, { createContext, useContext, useRef, type ReactNode } from 'react';
 import { CanvasHint } from '../hint';
@@ -181,6 +184,9 @@ const ICONS: Record<string, PhosphorIcon> = {
   github: GithubLogo,
   signout: SignOut,
   folder: FolderSimple,
+  file: FileIcon,
+  image: ImageIcon,
+  comment: ChatText,
 };
 
 export function Icon({
@@ -342,6 +348,12 @@ export function ActionNode({ id, data }: NodeProps<ActionNodeT>) {
       <div className="lr-title">{t.title}</div>
       <div className="lr-meta">
         {actionMeta(t, data)}
+        {t.comments.length > 0 && (
+          <span className="lr-meta-item lr-comment-count" title={`${t.comments.length} comment${t.comments.length === 1 ? '' : 's'}`}>
+            <Icon name="comment" size={12} />
+            {t.comments.length}
+          </span>
+        )}
         {data.collapsed && (
           <span className="nodrag">
             <IconButton

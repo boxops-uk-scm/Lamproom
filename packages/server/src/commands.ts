@@ -46,6 +46,7 @@ const RUNNERS: Record<string, Runner> = {
   ask: (ctx, a) => core.ask(ctx, a as { actionId: string; question: string; context?: string; release?: boolean }),
   answer: (ctx, a) => core.answer(ctx, a as { questionId: string; text: string }),
   review: (ctx, a) => core.review(ctx, a as { artefactId: string; verdict: 'accept' | 'reject'; notes?: string[] }),
+  comment: (ctx, a) => core.comment(ctx, a as unknown as core.CommentInput),
 };
 
 export const COMMANDS = Object.keys(RUNNERS);
@@ -54,7 +55,7 @@ export const COMMANDS = Object.keys(RUNNERS);
 export function commandRefs(args: Record<string, unknown>): string[] {
   const ids: string[] = [];
   const str = (v: unknown): v is string => typeof v === 'string';
-  for (const k of ['actionId', 'artefactId', 'questionId', 'parent']) if (str(args[k])) ids.push(args[k]);
+  for (const k of ['actionId', 'artefactId', 'questionId', 'targetId', 'parent']) if (str(args[k])) ids.push(args[k]);
   for (const k of ['inputs', 'outputs', 'addInputs', 'addOutputs']) {
     const v = args[k];
     if (Array.isArray(v)) ids.push(...v.filter(str));

@@ -120,6 +120,25 @@ try {
       console.log(`${verdict}ed ${artefactId}`);
       break;
     }
+    case 'comment': {
+      const [targetId, ...rest] = positional();
+      // --attach may repeat: each value is a local file, uploaded first.
+      const paths = argv.flatMap((a, i) => (a === '--attach' && argv[i + 1] ? [argv[i + 1]!] : []));
+      if (!targetId || (!rest.length && !paths.length)) {
+        die('usage: lamproom comment <actionId|artefactId> <text...> [--attach <file>]... [--reply <commentId>]   (Markdown)');
+      }
+      for (const f of paths) if (!fs.existsSync(f)) die(`no such file ${f}`);
+      const c = client();
+      const p = await projectOf(c);
+      const attachments = [];
+      for (const f of paths) attachments.push(await c.uploadFile(p.id, f));
+      const r = await c.command(p.id, {
+        command: 'comment',
+        args: { targetId, body: rest.join(' '), attachments: attachments.length ? attachments : undefined, replyTo: opt('reply') },
+      });
+      console.log(`commented on ${targetId} (${String(r.commentId)})`);
+      break;
+    }
     case 'restore':
     case 'reopen': {
       const [actionId, ...note] = positional();
@@ -165,6 +184,7 @@ try {
   status                                print the coal face of this project
   answer <questionId> <text...>         answer a question as yourself (Markdown)
   review <artefactId> accept|reject [notes...]   notes are Markdown, one per argument
+  comment <id> <text...> [--attach file]... [--reply commentId]   comment on an action or artefact
   restore <actionId> [note]             undo an abandonment
   reopen <actionId> [note]              undo a completion; outputs keep their versions
   import <events.jsonl>                 load a file log into this project's streams

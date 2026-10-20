@@ -255,6 +255,38 @@ export function createServer(opts: ServerOptions): http.Server {
     });
   });
 
+  // ---- files -------------------------------------------------------------
+
+  // Uploads for comment attachments. The body is the file itself; the name
+  // rides in the query string. The answer is the attachment to put on a comment.
+  r.add('POST', '/api/projects/:id/files', async ({ req, res, url, params, user }) => {
+    const p = await member(params.id!, user!);
+    const name = url.searchParams.get('name')?.trim().slice(0, 200);
+    if (!name) throw new ApiError(400, 'missing name');
+    const data = await readBytes(req, MAX_FILE);
+    if (!data.byteLength) throw new ApiError(400, 'empty file');
+    const type = String(req.headers['content-type'] ?? '').split(';')[0]!.trim() || 'application/octet-stream';
+    const id = core.newFileId();
+    await store.saveFile(p.id, { id, name, type, data, createdBy: user!.id });
+    json(res, 201, { ref: `/api/projects/${p.id}/files/${id}`, title: name, type, size: data.byteLength } satisfies core.Attachment);
+  });
+  r.add('GET', '/api/projects/:id/files/:file', async ({ res, params, user }) => {
+    const p = await member(params.id!, user!);
+    const f = await store.getFile(p.id, params.file!);
+    if (!f) throw new ApiError(404, 'no such file');
+    // Only images open in the page; anything else downloads, so an uploaded
+    // page can never run as this origin.
+    const inline = /^image\/(png|jpeg|gif|webp)$/.test(f.type);
+    res.writeHead(200, {
+      'Content-Type': inline ? f.type : 'application/octet-stream',
+      'Content-Length': f.size,
+      'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(f.name)}`,
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'private, max-age=31536000, immutable',
+    });
+    res.end(f.data);
+  });
+
   // ---- commands ----------------------------------------------------------
 
   r.add('POST', '/api/projects/:id/commands', async ({ req, res, params, user }) => {
@@ -306,6 +338,23 @@ function who(user: User, agent?: string, onBehalfOf?: boolean): { actor: Actor; 
 function json(res: Res, status: number, body: unknown): void {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(body));
+}
+
+const MAX_FILE = 10 * 1024 * 1024;
+
+function readBytes(req: Req, max: number): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on('data', (c: Buffer) => {
+      size += c.length;
+      // Past the limit the rest is drained and dropped, so the 413 still reaches the client.
+      if (size > max) return reject(new ApiError(413, `files are limited to ${max / 1024 / 1024} MB`));
+      chunks.push(c);
+    });
+    req.on('end', () => resolve(new Uint8Array(Buffer.concat(chunks))));
+    req.on('error', reject);
+  });
 }
 
 function readBody(req: Req): Promise<string> {

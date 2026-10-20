@@ -24,7 +24,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { $createQuoteNode, $isHeadingNode, $isQuoteNode } from '@lexical/rich-text';
 import { $setBlocksType } from '@lexical/selection';
 import { $findMatchingParent, $getNearestNodeOfType, IS_APPLE } from '@lexical/utils';
-import { Code, CodeBlock, LinkSimple, ListBullets, ListChecks, ListNumbers, Quotes } from '@phosphor-icons/react';
+import { Code, CodeBlock, LinkSimple, ListBullets, ListChecks, ListNumbers, Paperclip, Quotes } from '@phosphor-icons/react';
 import {
   $createParagraphNode,
   $createTextNode,
@@ -92,7 +92,7 @@ function read(editor: LexicalEditor): Current | null {
   });
 }
 
-export function Toolbar({ isDisabled = false }: { isDisabled?: boolean }) {
+export function Toolbar({ isDisabled = false, onAttach }: { isDisabled?: boolean; onAttach?: () => void }) {
   const [editor] = useLexicalComposerContext();
   const [cur, setCur] = useState<Current | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
@@ -339,6 +339,23 @@ export function Toolbar({ isDisabled = false }: { isDisabled?: boolean }) {
           isDisabled={isDisabled}
         />
       </div>
+      {onAttach && (
+        <>
+          <span className="lr-rt-sep" aria-hidden="true" />
+          <div className="lr-rt-group" role="group" aria-label="Attach">
+            <ToggleButton
+              label="Attach files"
+              tooltip="Attach files (or paste or drop them here)"
+              size="sm"
+              isIconOnly
+              icon={<Paperclip size={16} weight="regular" />}
+              isPressed={false}
+              onPressedChange={onAttach}
+              isDisabled={isDisabled}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

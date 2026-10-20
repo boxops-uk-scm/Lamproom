@@ -2,12 +2,41 @@
 
 import { agentFace, humanQueue, summarise } from './project.js';
 import { inlineText } from './richtext.js';
-import type { ActionState, Actor, State } from './types.js';
+import type { ActionState, Actor, Comment, State } from './types.js';
 
 function art(s: State, id: string): string {
   const a = s.artefacts[id];
   if (!a) return `${id} (unknown)`;
   return `${id} "${a.title}" <${a.kind}:${a.status}>`;
+}
+
+/** One comment on one line: who, what, and what it points at. */
+export function describeComment(c: Comment, max = 280): string {
+  const who = `${c.by.kind} ${c.by.name ?? c.by.id}${c.via ? ` via ${c.via.id}` : ''}`;
+  const att = c.attachments?.length ? ` [attached: ${c.attachments.map((a) => a.title ?? a.ref).join(', ')}]` : '';
+  return `${c.id}${c.replyTo ? ` (re ${c.replyTo})` : ''} ${who}: ${inlineText(c.body, max)}${att}`;
+}
+
+/**
+ * The latest comments on an action and on the artefacts it touches, for an
+ * agent about to work it. Humans' comments are the main channel for
+ * steering work that is already planned, so they are never left out.
+ */
+function commentLines(s: State, t: ActionState, perTarget = 5): string[] {
+  const lines: string[] = [];
+  const recent = (cs: Comment[]) => {
+    const human = cs.filter((c) => c.by.kind === 'human');
+    const keep = new Set([...cs.slice(-perTarget), ...human.slice(-perTarget)]);
+    return cs.filter((c) => keep.has(c));
+  };
+  const own = recent(t.comments);
+  if (own.length) lines.push(`    comments (${t.comments.length}):`, ...own.map((c) => `      ${describeComment(c)}`));
+  for (const id of [...t.inputs, ...t.outputs]) {
+    const a = s.artefacts[id];
+    if (!a?.comments.length) continue;
+    lines.push(`    comments on ${id} (${a.comments.length}):`, ...recent(a.comments).map((c) => `      ${describeComment(c)}`));
+  }
+  return lines;
 }
 
 export function describeAction(s: State, t: ActionState, verbose = false): string {
@@ -31,6 +60,7 @@ export function describeAction(s: State, t: ActionState, verbose = false): strin
       }
     }
     if (t.children.length) lines.push(`    children: ${t.children.join(', ')}`);
+    lines.push(...commentLines(s, t));
     const recent = t.log.slice(-4);
     if (recent.length) lines.push(`    recent: ${recent.map((l) => `${l.type.replace('action.', '')}${l.note ? ` (${inlineText(l.note, 160)})` : ''}`).join('; ')}`);
   }

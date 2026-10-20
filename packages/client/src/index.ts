@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import type { Actor, Event, Policy, State } from '@lamproom/core';
+import type { Actor, Attachment, Event, Policy, State } from '@lamproom/core';
 
 const run = promisify(execFile);
 
@@ -192,6 +192,34 @@ export class Client {
   exportEvents(projectId: string): Promise<string> {
     return this.call('GET', `/api/projects/${projectId}/export`);
   }
+  /** Upload a local file for a comment; the answer is the attachment to put on it. */
+  async uploadFile(projectId: string, file: string): Promise<Attachment> {
+    const res = await this.fetch(`/api/projects/${projectId}/files?name=${encodeURIComponent(path.basename(file))}`, {
+      method: 'POST',
+      headers: { 'content-type': mediaType(file) },
+      body: fs.readFileSync(file),
+    });
+    return (await res.json()) as Attachment;
+  }
+  /** An uploaded attachment's bytes, by its ref. */
+  async downloadFile(ref: string): Promise<Uint8Array> {
+    if (!ref.startsWith('/api/')) throw new ClientError(400, `${ref} is not a Lamproom file`);
+    return new Uint8Array(await (await this.fetch(ref, {})).arrayBuffer());
+  }
+  private async fetch(p: string, init: RequestInit): Promise<Response> {
+    const headers = { ...(init.headers as Record<string, string>), ...(this.token ? { authorization: `Bearer ${this.token}` } : {}) };
+    let res: Response;
+    try {
+      res = await fetch(`${this.server}${p}`, { ...init, headers });
+    } catch (e) {
+      throw new ClientError(0, `cannot reach ${this.server}: ${e instanceof Error ? e.message : String(e)}. Is "lamproom serve" running?`);
+    }
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new ClientError(res.status, res.status === 401 ? `not signed in to ${this.server}: run "lamproom login"` : (body.error ?? `${p} failed (${res.status})`));
+    }
+    return res;
+  }
   deviceStart(label?: string): Promise<{ id: string; userCode: string; verificationUri: string; interval: number; expiresIn: number }> {
     return this.call('POST', '/api/auth/device', { label });
   }
@@ -243,4 +271,24 @@ export async function resolveProject(client: Client, cwd: string, explicit?: str
     }
     throw e;
   }
+}
+
+const MEDIA: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.pdf': 'application/pdf',
+  '.txt': 'text/plain',
+  '.log': 'text/plain',
+  '.md': 'text/markdown',
+  '.json': 'application/json',
+  '.csv': 'text/csv',
+  '.zip': 'application/zip',
+};
+
+/** A media type from the file name; the server only trusts it to pick inline images. */
+export function mediaType(file: string): string {
+  return MEDIA[path.extname(file).toLowerCase()] ?? 'application/octet-stream';
 }

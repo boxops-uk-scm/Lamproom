@@ -82,6 +82,7 @@ function apply(s: State, e: Event): void {
       s.artefacts[e.artefact.id] = {
         ...e.artefact,
         seq,
+        comments: [],
         versions: [],
         acceptedBy: [],
         rejections: [],
@@ -132,6 +133,7 @@ function apply(s: State, e: Event): void {
         inputs: [...e.action.inputs],
         outputs: [...e.action.outputs],
         seq,
+        comments: [],
         children: [],
         evaluations: [],
         completed: false,
@@ -232,6 +234,21 @@ function apply(s: State, e: Event): void {
       t.completed = false;
       t.claimedBy = undefined;
       t.log.push({ seq, ts: e.ts, type: e.type, actor: e.onBehalfOf ?? e.actor, via: e.onBehalfOf ? e.actor : undefined, note: e.note });
+      return;
+    }
+    case 'comment.added': {
+      const target = s.actions[e.targetId] ?? s.artefacts[e.targetId];
+      if (!target) return warn(s, seq, `comment on unknown ${e.targetId}`);
+      target.comments.push({
+        id: e.commentId,
+        seq,
+        ts: e.ts,
+        by: e.onBehalfOf ?? e.actor,
+        via: e.onBehalfOf ? e.actor : undefined,
+        body: e.body,
+        attachments: e.attachments,
+        replyTo: e.replyTo,
+      });
       return;
     }
   }

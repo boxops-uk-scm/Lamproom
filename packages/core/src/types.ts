@@ -66,6 +66,21 @@ export interface Evaluation {
   rationale?: RichText;
 }
 
+/**
+ * A file on a comment. Like a version ref it is a pointer: for an upload,
+ * the server path the file is served from (/api/projects/<id>/files/<id>);
+ * links belong in the comment's Markdown instead.
+ */
+export interface Attachment {
+  ref: string;
+  /** File name, as uploaded. */
+  title?: string;
+  /** Media type. */
+  type?: string;
+  /** Bytes. */
+  size?: number;
+}
+
 export type EventPayload =
   | { type: 'artefact.declared'; artefact: ArtefactDecl }
   | { type: 'artefact.version'; artefactId: string; ref: string; note?: RichText }
@@ -92,7 +107,20 @@ export type EventPayload =
   /** Undoes an abandonment: the action is workable again as its inputs allow. */
   | { type: 'action.restored'; actionId: string; note?: RichText }
   /** Undoes a completion: the action is workable again; its outputs keep their versions. */
-  | { type: 'action.reopened'; actionId: string; note?: RichText };
+  | { type: 'action.reopened'; actionId: string; note?: RichText }
+  /**
+   * Discussion on an action or artefact, from a human or an agent. It changes
+   * no status: it is context for whoever picks the work up next.
+   */
+  | {
+      type: 'comment.added';
+      targetId: string;
+      commentId: string;
+      body: RichText;
+      attachments?: Attachment[];
+      /** The comment on the same target this one answers. */
+      replyTo?: string;
+    };
 
 export type EventType = EventPayload['type'];
 
@@ -117,7 +145,7 @@ export type Event = EventPayload & {
 /** Bumped when the event shape changes; see upcast.ts. */
 export const SCHEMA_VERSION = 1;
 /** Bumped when the projection changes; stored snapshots with another version are rebuilt. */
-export const PROJECTION_VERSION = 2;
+export const PROJECTION_VERSION = 3;
 
 // ---- Policy -------------------------------------------------------------
 
@@ -157,8 +185,21 @@ export interface Version {
   note?: RichText;
 }
 
+export interface Comment {
+  id: string;
+  seq: number;
+  ts: string;
+  by: Actor;
+  /** The relaying agent, when `by` is a human who said it in chat. */
+  via?: Actor;
+  body: RichText;
+  attachments?: Attachment[];
+  replyTo?: string;
+}
+
 export interface ArtefactState extends ArtefactDecl {
   seq: number;
+  comments: Comment[];
   versions: Version[];
   acceptedRef?: string;
   acceptedBy: Actor[];
@@ -193,6 +234,7 @@ export interface LogEntry {
 
 export interface ActionState extends ActionDecl {
   seq: number;
+  comments: Comment[];
   children: string[];
   claimedBy?: Actor;
   evaluation?: Evaluation;

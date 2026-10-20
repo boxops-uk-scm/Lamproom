@@ -209,6 +209,51 @@ describe('streams', () => {
     expect(data.events.every((e) => e.stream === b.id)).toBe(true);
   });
 
+  it('comments land in the target\'s stream and reach the coal face', async () => {
+    const list = (await tom<{ streams: { id: string; state: State; rev: number }[] }>('GET', `/api/projects/${pid}/streams?states=1`)).body.streams;
+    const a = list.find((x) => x.state.actions[x.id]?.title === 'Goal A')!;
+    const child = Object.values(a.state.actions).find((t) => t.title === 'A1')!;
+    const human = await cmd<{ commentId: string }>({ command: 'comment', args: { targetId: child.outputs[0], body: 'Split the migration out' } });
+    expect(human.status).toBe(200);
+    expect(human.body.stream).toBe(a.id);
+    expect(human.body.commentId).toMatch(/^c-/);
+    const agent = await cmd({
+      command: 'comment',
+      agent: 'ab12c',
+      args: { targetId: child.id, body: 'Repro attached', attachments: [{ ref: 'https://ci.example/7' }], replyTo: undefined },
+    });
+    expect(agent.body.rev).toBe(human.body.rev + 1);
+    const relayed = await cmd({ command: 'comment', agent: 'ab12c', onBehalfOf: true, args: { targetId: child.id, body: 'x' } });
+    expect(relayed.status).toBe(400);
+    const text = (await tom<string>('GET', `/api/projects/${pid}/status`)).body;
+    expect(text).toContain('Split the migration out');
+    expect(text).toContain('[attached: https://ci.example/7]');
+  });
+
+  it('stores uploaded files for members and serves only images inline', async () => {
+    const cookie = await signInWeb('tom');
+    const up = await fetch(`${srv.url}/api/projects/${pid}/files?name=${encodeURIComponent('shot 1.png')}`, {
+      method: 'POST',
+      headers: { cookie, 'content-type': 'image/png' },
+      body: new Uint8Array([137, 80, 78, 71]),
+    });
+    expect(up.status).toBe(201);
+    const att = (await up.json()) as { ref: string; title: string; type: string; size: number };
+    expect(att).toMatchObject({ title: 'shot 1.png', type: 'image/png', size: 4 });
+    const got = await fetch(`${srv.url}${att.ref}`, { headers: { cookie } });
+    expect(got.headers.get('content-type')).toBe('image/png');
+    expect([...new Uint8Array(await got.arrayBuffer())]).toEqual([137, 80, 78, 71]);
+    const html = await fetch(`${srv.url}/api/projects/${pid}/files?name=x.html`, { method: 'POST', headers: { cookie, 'content-type': 'text/html' }, body: '<script>1</script>' });
+    const page = await fetch(`${srv.url}${((await html.json()) as { ref: string }).ref}`, { headers: { cookie } });
+    expect(page.headers.get('content-type')).toBe('application/octet-stream');
+    expect(page.headers.get('content-disposition')).toMatch(/^attachment/);
+    // ada can see boxops/lamproom but not boxops/www, so a www file is not hers to read.
+    const www = (await tom<{ id: string }>('GET', '/api/projects/by-repo/boxops/www')).body.id;
+    const secret = await fetch(`${srv.url}/api/projects/${www}/files?name=a.png`, { method: 'POST', headers: { cookie, 'content-type': 'image/png' }, body: 'x' });
+    const ada = await fetch(`${srv.url}${((await secret.json()) as { ref: string }).ref}`, { headers: { cookie: await signInWeb('ada') } });
+    expect(ada.status).toBe(403);
+  });
+
   it('union of stream states equals the projection of the exported log', async () => {
     const list = (await tom<{ streams: { state: State }[] }>('GET', `/api/projects/${pid}/streams?states=1`)).body.streams;
     const union = unionState(list.map((s) => s.state));

@@ -1,4 +1,4 @@
-import { isBlank, richTextItems, type ActionState, type Actor, type ArtefactState, type LogEntry, type State } from '@lamproom/core';
+import { isBlank, richTextItems, type ActionState, type Attachment, type Actor, type ArtefactState, type LogEntry, type State } from '@lamproom/core';
 import { BreadcrumbItem, Breadcrumbs } from '@astryxdesign/core/Breadcrumbs';
 import { Button } from '@astryxdesign/core/Button';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
@@ -12,9 +12,11 @@ import { useState, type ReactNode } from 'react';
 import { ARTEFACT_HUE, ARTEFACT_LABEL, Icon, STATUS_LABEL, StatusToken, actionHue, cx, kindIcon } from '../graph/nodes';
 import { RichTextEditor } from '../rich/RichTextEditor';
 import { RichTextView } from '../rich/RichTextView';
+import { Comments } from './Comments';
 import { Versions } from './Versions';
 
 export type Run = (command: string, args: Record<string, unknown>) => Promise<void>;
+export type Upload = (file: File) => Promise<Attachment>;
 
 interface Props {
   state: State;
@@ -23,9 +25,10 @@ interface Props {
   live: boolean;
   onSelect: (id: string | undefined) => void;
   run: Run;
+  upload: Upload;
 }
 
-export function Panel({ state, selected: rawSelected, human, live, onSelect, run }: Props) {
+export function Panel({ state, selected: rawSelected, human, live, onSelect, run, upload }: Props) {
   const selected = rawSelected?.startsWith('seam:') ? rawSelected.slice(3) : rawSelected;
   if (!selected) {
     return (
@@ -35,9 +38,9 @@ export function Panel({ state, selected: rawSelected, human, live, onSelect, run
     );
   }
   const t = state.actions[selected];
-  if (t) return <ActionPanel state={state} action={t} human={human} live={live} onSelect={onSelect} run={run} />;
+  if (t) return <ActionPanel state={state} action={t} human={human} live={live} onSelect={onSelect} run={run} upload={upload} />;
   const a = state.artefacts[selected];
-  if (a) return <ArtefactPanel state={state} artefact={a} human={human} live={live} onSelect={onSelect} run={run} />;
+  if (a) return <ArtefactPanel state={state} artefact={a} human={human} live={live} onSelect={onSelect} run={run} upload={upload} />;
   return (
     <aside className="lr-panel lr-panel-empty">
       <EmptyState isCompact title="Not yet" description="Nothing here at this point in history." />
@@ -166,7 +169,7 @@ function Breadcrumb({ state, action, onSelect }: { state: State; action: ActionS
   );
 }
 
-function ActionPanel({ state, action: t, human, live, onSelect, run }: { state: State; action: ActionState } & Omit<Props, 'selected'>) {
+function ActionPanel({ state, action: t, human, live, onSelect, run, upload }: { state: State; action: ActionState } & Omit<Props, 'selected'>) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const isHumanAction = t.requires?.actorKind === 'human';
@@ -401,6 +404,10 @@ function ActionPanel({ state, action: t, human, live, onSelect, run }: { state: 
         </Section>
       )}
 
+      <Section title={`Comments (${t.comments.length})`}>
+        <Comments targetId={t.id} comments={t.comments} canAct={canAct} run={run} upload={upload} />
+      </Section>
+
       <Section title="History">
         <History log={t.log} />
       </Section>
@@ -408,7 +415,7 @@ function ActionPanel({ state, action: t, human, live, onSelect, run }: { state: 
   );
 }
 
-function ArtefactPanel({ state, artefact: a, human, live, onSelect, run }: { state: State; artefact: ArtefactState } & Omit<Props, 'selected'>) {
+function ArtefactPanel({ state, artefact: a, human, live, onSelect, run, upload }: { state: State; artefact: ArtefactState } & Omit<Props, 'selected'>) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const producers = Object.values(state.actions).filter((t) => t.outputs.includes(a.id));
@@ -520,6 +527,10 @@ function ArtefactPanel({ state, artefact: a, human, live, onSelect, run }: { sta
           )}
         </Section>
       )}
+
+      <Section title={`Comments (${a.comments.length})`}>
+        <Comments targetId={a.id} comments={a.comments} canAct={!!(live && human)} run={run} upload={upload} />
+      </Section>
     </aside>
   );
 }

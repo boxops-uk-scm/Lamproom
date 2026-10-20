@@ -283,6 +283,21 @@ export class Store {
     return { id: streamId, rev, headSeq, createdSeq, ...sum };
   }
 
+  // ---- files -----------------------------------------------------------
+
+  async saveFile(projectId: string, file: { id: string; name: string; type: string; data: Uint8Array; createdBy: string }): Promise<void> {
+    await this.db.run(
+      `INSERT INTO files (project_id, id, name, type, size, data, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [projectId, file.id, file.name, file.type, file.data.byteLength, file.data, file.createdBy, new Date().toISOString()],
+    );
+  }
+
+  async getFile(projectId: string, id: string): Promise<{ name: string; type: string; size: number; data: Uint8Array } | undefined> {
+    const r = await this.db.get(`SELECT name, type, size, data FROM files WHERE project_id = ? AND id = ?`, [projectId, id]);
+    if (!r) return undefined;
+    return { name: String(r.name), type: String(r.type), size: Number(r.size), data: r.data as Uint8Array };
+  }
+
   // ---- idempotency -----------------------------------------------------
 
   async recall(projectId: string, key: string): Promise<unknown | undefined> {
@@ -426,6 +441,8 @@ export function eventRefs(e: Event): string[] {
       return [e.action.parent, ...e.action.inputs, ...e.action.outputs, e.action.expandedFrom].filter((x): x is string => !!x);
     case 'action.amended':
       return [e.actionId, ...(e.addInputs ?? []), ...(e.addOutputs ?? [])];
+    case 'comment.added':
+      return [e.targetId];
     default:
       return ['artefactId' in e ? e.artefactId : e.actionId];
   }

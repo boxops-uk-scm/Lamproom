@@ -47,5 +47,7 @@ export function describeEvent(s: State, e: Event): string {
       return `${w} restored ${actionTitle(s, e.actionId)}`;
     case 'action.reopened':
       return `${w} reopened ${actionTitle(s, e.actionId)}`;
+    case 'comment.added':
+      return `${w} ${e.replyTo ? 'replied' : 'commented'} on ${s.actions[e.targetId] ? actionTitle(s, e.targetId) : artefactTitle(s, e.targetId)}: ${inlineText(e.body) || 'attachments'}`;
   }
 }

@@ -2,7 +2,7 @@
 // stream's current state at once, one stream's events for scrubbing, and a
 // live feed that resumes from the last seq the page saw.
 
-import type { Actor, Event, Policy, State } from '@lamproom/core';
+import type { Actor, Attachment, Event, Policy, State } from '@lamproom/core';
 
 export interface Me {
   user: { id: string; login: string; name?: string; avatar?: string };
@@ -110,4 +110,16 @@ export interface CommandResult {
 
 export function command<T = CommandResult>(projectId: string, name: string, args: Record<string, unknown>): Promise<T> {
   return call<T>('POST', `/api/projects/${projectId}/commands`, { command: name, args });
+}
+
+/** Upload a file for a comment; the answer is the attachment to put on it. */
+export async function uploadFile(projectId: string, file: File): Promise<Attachment> {
+  const r = await fetch(`/api/projects/${projectId}/files?name=${encodeURIComponent(file.name)}`, {
+    method: 'POST',
+    headers: { 'content-type': file.type || 'application/octet-stream' },
+    body: file,
+  });
+  const body = (await r.json().catch(() => ({}))) as Attachment & { error?: string };
+  if (!r.ok) throw new ApiError(r.status, body.error ?? `upload of ${file.name} failed (${r.status})`);
+  return body;
 }

@@ -8,7 +8,7 @@
 // project with a mutex, so a transaction never interleaves with another.
 
 export type Dialect = 'sqlite' | 'postgres';
-export type Param = string | number | bigint | null;
+export type Param = string | number | bigint | null | Uint8Array;
 export type Row = Record<string, unknown>;
 
 export interface Db {
@@ -111,6 +111,17 @@ const SCHEMA = [
      created_at TEXT NOT NULL,
      PRIMARY KEY (project_id, key)
    )`,
+  `CREATE TABLE IF NOT EXISTS files (
+     project_id TEXT NOT NULL REFERENCES projects(id),
+     id TEXT NOT NULL,
+     name TEXT NOT NULL,
+     type TEXT NOT NULL,
+     size INTEGER NOT NULL,
+     data BLOB NOT NULL,
+     created_by TEXT NOT NULL,
+     created_at TEXT NOT NULL,
+     PRIMARY KEY (project_id, id)
+   )`,
 ];
 
 export const SCHEMA_VERSION = 1;
@@ -119,6 +130,7 @@ function pg(sql: string): string {
   let n = 0;
   return sql
     .replace(/INTEGER PRIMARY KEY AUTOINCREMENT/g, 'BIGSERIAL PRIMARY KEY')
+    .replace(/\bBLOB\b/g, 'BYTEA')
     .replace(/\?/g, () => `$${++n}`);
 }
 

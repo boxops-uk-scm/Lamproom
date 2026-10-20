@@ -180,6 +180,8 @@ export function eventEntityId(e: Event): string {
       return e.artefact.id;
     case 'action.proposed':
       return e.action.id;
+    case 'comment.added':
+      return e.targetId;
     default:
       return 'artefactId' in e ? e.artefactId : e.actionId;
   }
