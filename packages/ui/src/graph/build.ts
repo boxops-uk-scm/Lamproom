@@ -23,9 +23,10 @@ export const FRAME_MIN_W = 460;
 export const FRAME_COLLAPSED_W = 360;
 export const FRAME_COLLAPSED_H = 112;
 
-export const frameId = (wfId: string): string => `seam:${wfId}`;
-export const isFrameId = (id: string): boolean => id.startsWith('seam:');
-export const unframe = (id: string): string => (isFrameId(id) ? id.slice(3) : id);
+const FRAME_PREFIX = 'seam:';
+export const frameId = (wfId: string): string => `${FRAME_PREFIX}${wfId}`;
+export const isFrameId = (id: string): boolean => id.startsWith(FRAME_PREFIX);
+export const unframe = (id: string): string => (isFrameId(id) ? id.slice(FRAME_PREFIX.length) : id);
 
 export interface FrameState {
   /** Where the user put it; a frame without a position stacks automatically. */

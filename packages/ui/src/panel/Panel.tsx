@@ -10,6 +10,7 @@ import { TextInput } from '@astryxdesign/core/TextInput';
 import { Token } from '@astryxdesign/core/Token';
 import { useState, type ReactNode } from 'react';
 import { ARTEFACT_HUE, ARTEFACT_LABEL, Icon, STATUS_LABEL, StatusToken, actionHue, cx, kindIcon } from '../graph/nodes';
+import { unframe } from '../graph/build';
 import { RichTextEditor } from '../rich/RichTextEditor';
 import { RichTextView } from '../rich/RichTextView';
 import { Comments } from './Comments';
@@ -29,7 +30,7 @@ interface Props {
 }
 
 export function Panel({ state, selected: rawSelected, human, live, onSelect, run, upload }: Props) {
-  const selected = rawSelected?.startsWith('seam:') ? rawSelected.slice(3) : rawSelected;
+  const selected = rawSelected && unframe(rawSelected);
   if (!selected) {
     return (
       <aside className="lr-panel lr-panel-empty">
